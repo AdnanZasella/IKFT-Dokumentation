@@ -230,9 +230,10 @@ class SetPasswordIntegrationTest {
 	}
 
 	@Test
-	void ogiltigaTeckenIAnvandarnamnetGerSammaSvarSomFelaktigKod() throws Exception {
-		// Postgres godtar inte NUL i text, så värdet får inte nå databasen.
-		assertThat(felsvar("admin\\u0000", "0000-0000-0000")).isEqualTo(felKodSvar);
+	void nulIAnvandarnamnetGer400() throws Exception {
+		// Postgres godtar inte NUL i text. Svaret beror bara på värdet, inte på om kontot finns.
+		setPassword("admin\\u0000", "0000-0000-0000", NYTT_LOSENORD).andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
 	}
 
 	@Test

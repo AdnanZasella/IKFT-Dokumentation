@@ -1,5 +1,6 @@
 package se.ikft.common.error;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -71,8 +72,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-		// T.ex. en dubblett av ett unikt värde. Databasens meddelande skickas inte till klienten.
+		// Databasens meddelande skickas inte till klienten.
 		log.info("Databasen avvisade ändringen: {}", ex.getMostSpecificCause().getMessage());
+		// SQLSTATE-klass 22 är fel i själva värdet, t.ex. NUL i text, och alltså ett fel i begäran.
+		if (ex.getMostSpecificCause() instanceof SQLException sql && sql.getSQLState() != null
+				&& sql.getSQLState().startsWith("22")) {
+			return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Begäran innehåller ogiltiga värden.");
+		}
+		// T.ex. en dubblett av ett unikt värde.
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Ändringen krockar med befintliga uppgifter.");
 	}
 

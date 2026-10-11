@@ -2,12 +2,13 @@ package se.ikft.auth;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
 
 import se.ikft.account.Role;
@@ -22,8 +23,10 @@ import se.ikft.common.config.TimeConfig;
  * nästa start efter att raden i {@code setup_code} raderats eller koden gått ut.
  * <p>
  * Har Admin glömt lösenordet, eller har någon annan satt det, startar den som driftar servern appen
- * med {@code ikft.auth.reset-admin-password=true}. Då skapas en ny kod även om kontot har lösenord.
- * Det kräver åtkomst till servern, som är det enda som går att lita på när Admin inte kan logga in.
+ * en gång med {@code ikft.auth.reset-admin-password=true}. Det kräver åtkomst till servern, som är det
+ * enda som går att lita på när Admin inte kan logga in. Lösenordet tas bort, gamla sessioner slutar
+ * gälla, en ny kod skrivs ut och appen stängs. Den kan alltså inte köras vidare med inställningen
+ * kvar, så den kan inte glömmas och fortsätta skapa nya koder vid varje start.
  */
 @Component
 class AdminSetupCodeInitializer implements ApplicationRunner {
@@ -36,11 +39,14 @@ class AdminSetupCodeInitializer implements ApplicationRunner {
 
 	private final AuthProperties properties;
 
+	private final ConfigurableApplicationContext context;
+
 	AdminSetupCodeInitializer(UserAccountRepository accounts, SetupCodeService setupCodes,
-			AuthProperties properties) {
+			AuthProperties properties, ConfigurableApplicationContext context) {
 		this.accounts = accounts;
 		this.setupCodes = setupCodes;
 		this.properties = properties;
+		this.context = context;
 	}
 
 	@Override
@@ -48,26 +54,32 @@ class AdminSetupCodeInitializer implements ApplicationRunner {
 		UserAccount admin = accounts.findByRole(Role.ADMIN)
 			.orElseThrow(() -> new IllegalStateException("Admin-kontot saknas i databasen."));
 		if (properties.resetAdminPassword()) {
-			NewSetupCode code = setupCodes.createFor(admin);
-			log.warn("Admin-lösenordet återställs (ikft.auth.reset-admin-password). Användarnamn: {}, "
-					+ "engångskod: {} (gäller till {}). Sätt lösenordet med POST /api/v1/auth/set-password "
-					+ "och ta sedan bort inställningen, annars skapas en ny kod vid varje start.",
-					admin.getUsername(), code.code(), localValidUntil(code));
+			NewSetupCode code = setupCodes.reset(admin);
+			logCode("Admin-lösenordet är återställt (ikft.auth.reset-admin-password). Det gamla lösenordet "
+					+ "och alla sessioner gäller inte längre.", admin, code,
+					"Appen stängs nu. Ta bort inställningen, starta appen som vanligt och sätt lösenordet med "
+							+ "POST /api/v1/auth/set-password.");
+			exit();
 			return;
 		}
-		Optional<NewSetupCode> created = setupCodes.createIfMissing(admin);
-		if (created.isEmpty()) {
-			return;
-		}
-		NewSetupCode code = created.get();
 		// Det enda stället där koden finns i klartext. Den skrivs bara ut när den skapas.
-		log.warn("Admin-kontot saknar lösenord. Användarnamn: {}, engångskod: {} (gäller till {}). "
-				+ "Sätt lösenordet med POST /api/v1/auth/set-password.", admin.getUsername(), code.code(),
-				localValidUntil(code));
+		setupCodes.createIfMissing(admin)
+			.ifPresent(code -> logCode("Admin-kontot saknar lösenord.", admin, code,
+					"Sätt lösenordet med POST /api/v1/auth/set-password."));
 	}
 
-	private static LocalDateTime localValidUntil(NewSetupCode code) {
-		return code.validUntil().atZone(TimeConfig.ZONE).toLocalDateTime().truncatedTo(ChronoUnit.MINUTES);
+	/** Stänger appen efter en återställning. Ersätts i tester. */
+	void exit() {
+		System.exit(SpringApplication.exit(context, () -> 0));
+	}
+
+	private static void logCode(String before, UserAccount admin, NewSetupCode code, String after) {
+		LocalDateTime validUntil = code.validUntil()
+			.atZone(TimeConfig.ZONE)
+			.toLocalDateTime()
+			.truncatedTo(ChronoUnit.MINUTES);
+		log.warn("{} Användarnamn: {}, engångskod: {} (gäller till {}). {}", before, admin.getUsername(),
+				code.code(), validUntil, after);
 	}
 
 }

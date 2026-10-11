@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import se.ikft.account.UserAccount;
 import se.ikft.account.UserAccountRepository;
@@ -81,6 +83,20 @@ public class SetupCodeService {
 		return Optional.of(create(locked, now));
 	}
 
+	/**
+	 * Återställer kontot: tar bort lösenordet, räknar upp tokenversionen och skapar en ny kod. Används
+	 * när lösenordet kan ha hamnat hos fel person, så att det gamla lösenordet och gamla sessioner
+	 * slutar gälla direkt och inte först när den nya koden används.
+	 */
+	@Transactional
+	public NewSetupCode reset(UserAccount account) {
+		UserAccount locked = lock(account);
+		Instant now = clock.instant();
+		locked.clearPassword(now);
+		expireValidCodes(locked, now);
+		return create(locked, now);
+	}
+
 	private UserAccount lock(UserAccount account) {
 		return accounts.findForUpdateById(account.getId())
 			.orElseThrow(() -> new IllegalStateException("Kontot finns inte: " + account.getId()));
@@ -105,10 +121,6 @@ public class SetupCodeService {
 	 */
 	@Transactional
 	public void setPassword(String username, String code, String newPassword) {
-		// Postgres avvisar NUL i text med ett fel som annars blir ett annat svar än INVALID_CODE.
-		if (username.indexOf('\0') >= 0) {
-			throw new BadRequestException(INVALID_CODE);
-		}
 		// Låset gör att samma kod inte kan användas av två samtidiga anrop.
 		UserAccount account = accounts.findForUpdateByUsername(username)
 			.orElseThrow(() -> new BadRequestException(INVALID_CODE));
@@ -122,8 +134,15 @@ public class SetupCodeService {
 		setupCode.markUsed(now);
 		expireValidCodes(account, now);
 		account.changePassword(passwordEncoder.encode(Passwords.normalize(newPassword)), now);
-		// Gör att ett övertagande med en läckt kod syns i loggen. Koden loggas aldrig.
-		log.warn("Lösenordet för {} sattes med en engångskod.", account.getUsername());
+		// Gör att ett övertagande med en läckt kod syns i loggen. Loggas först efter commit, så att
+		// raden bara finns om lösenordet faktiskt byttes. Koden loggas aldrig.
+		String changed = account.getUsername();
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				log.warn("Lösenordet för {} sattes med en engångskod.", changed);
+			}
+		});
 	}
 
 }
