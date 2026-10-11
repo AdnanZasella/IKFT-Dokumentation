@@ -11,6 +11,17 @@ verksamhetsregler, roller eller API.
 - `docs/` – specifikationen, uppdelad i sju filer.
 - Frontend (publik hemsida och admin-app) finns inte än.
 
+Backend är uppdelad i paket per funktion under `se.ikft`. Varje paket har en `package-info.java`
+som beskriver vad paketet ansvarar för:
+
+- `common`: konfiguration, felhantering och hjälpklasser
+- `security`: Spring Security-konfiguration
+- `auth`: inloggning och lösenord
+- `account`: konton och innehavare
+- `member`: medlemsregistret
+- `audit`: ändringsloggen
+- `assignment`: dokumenteraruppdrag
+
 ## Kommandon
 
 Kör i `backend/`:
@@ -24,7 +35,11 @@ och testerna använder Testcontainers.
 
 ## Konventioner
 
-- Databasändringar görs med Flyway. JPA körs med `open-in-view: false`.
+- Databasändringar görs med Flyway. JPA körs med `open-in-view: false` och
+  `ddl-auto: validate`.
+- Alla felsvar är RFC 9457 `ProblemDetail` från `common.error.GlobalExceptionHandler`, även 401
+  och 403. Kasta `NotFoundException` eller `ConflictException` för att få 404 respektive 409.
+- Tidslogik använder den injicerade `Clock` (Europe/Stockholm), aldrig `now()` utan argument.
 - API:et är versionerat under `/api/v1`, publikt under `/api/v1/public`. Behörighet kontrolleras
   i backend med Spring Security, aldrig bara i gränssnittet.
 - Autentisering är stateless JWT i HttpOnly-cookie.
