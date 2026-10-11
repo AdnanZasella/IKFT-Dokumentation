@@ -72,13 +72,23 @@ Om årsskiftet passerar utan att någon är utsedd:
 - **Permanent framöver** — avslutar det nuvarande uppdraget direkt och sätter en ny ordinarie
   dokumenterare, gällande tills vidare eller till nästa årsskifte.
 
-**Byte av innehavare kräver nytt lösenord.** Eftersom kontona delas över tid vet systemet bara
-vem som *borde* använda kontot, inte vem som faktiskt är inloggad. För att "Registrerat av" ska
-vara trovärdigt gäller därför:
-- När ett uppdrag byter innehavare (ordinarie, tillfälligt eller när ett tillfälligt uppdrag
-  löper ut) **loggas alla befintliga sessioner för kontot ut** och kontot kräver ett **nytt
-  lösenord**, som sätts av den nya innehavaren via en engångskod som Admin delar ut.
-- Samma sak gäller Admin-kontot när innehavaren byts (t.ex. efter årsmötesval).
+**Byte av innehavare kräver lösenordsbyte vid första inloggningen.** Eftersom kontona delas över
+tid vet systemet bara vem som *borde* använda kontot, inte vem som faktiskt är inloggad. För att
+"Registrerat av" ska vara trovärdigt gäller därför:
+- När Dokumenterare-kontot byter innehavare (ordinarie, tillfälligt eller när ett tillfälligt
+  uppdrag löper ut) **loggas alla befintliga sessioner för kontot ut** och kontot markeras med
+  **"måste byta lösenord"**. Lösenordet behålls: den förra innehavaren lämnar över det till den
+  nya, som måste byta det vid första inloggningen. Tills dess kan kontot bara byta lösenord,
+  logga ut och läsa sina egna kontouppgifter.
+- Dokumenteraren är oftast någon i styrelsen, så föreningen godtar risken att den förra
+  innehavaren kan logga in innan den nya har bytt lösenord.
+- Byts innehavaren till samma medlem som redan har uppdraget händer ingenting.
+- **Admin-kontot byter inte innehavare.**
+- Ingen engångskod skapas vid innehavarbyte. Engångskoder används bara för ett kontos första
+  lösenord och som reservväg, t.ex. när ett lösenord har glömts bort (se
+  [Säkerhet och dataskydd](05-sakerhet-och-gdpr.md#säkerhet-och-dataskydd)). Båda kontona skapas
+  utan lösenord. Admin-kontots första kod skrivs i serverns logg. Dokumenterare-kontots första
+  kod skapas av Admin och lämnas till den första dokumenteraren.
 
 **Automatiskt ifyllt "Registrerat av".** Fältet fylls i automatiskt utifrån vem som innehar
 uppdraget just nu, istället för att skrivas in manuellt vid varje registrering.

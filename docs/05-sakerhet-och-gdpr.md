@@ -10,12 +10,17 @@ Del av [projektspecifikationen](00-oversikt.md).
   Muterande anrop skyddas med CSRF-token.
 - Rimlig giltighetstid och förnyelse (refresh) så att användare inte behöver logga in orimligt
   ofta på mobilen.
-- **Innehavarbyte ogiltigförklarar sessioner** via tokenversion.
+- **Innehavarbyte ogiltigförklarar sessioner** via tokenversion och kräver att lösenordet byts
+  vid första inloggningen (se
+  [Målgrupp och användarroller](01-dokumentationssystem.md#målgrupp-och-användarroller)). Så länge
+  kontot är markerat med "måste byta lösenord" nekas alla anrop med 403 utom byte av lösenord,
+  utloggning och `GET /auth/me`. Spärren ligger i backend, inte bara i gränssnittet.
 - **Begränsning av inloggningsförsök** (t.ex. tillfällig spärr efter upprepade felaktiga
   försök), eftersom inloggningssidan nu nås från en publik hemsida.
 - Valfritt men rekommenderat: **tvåstegsverifiering** för Admin-kontot.
-- **Engångskoder** används för det första Admin-lösenordet och som reservväg. Bara en hash av
-  koden lagras. Koden gäller 24 timmar (konfigurerbart) och kan bara användas en gång. Varje
+- **Engångskoder** används för ett kontos första lösenord och som reservväg. Admin-kontots
+  första kod skrivs i serverns logg när appen startar. Koder för Dokumenterare-kontot, och
+  reservkoder, skapas av Admin. Bara en hash av koden lagras. Koden gäller 24 timmar (konfigurerbart) och kan bara användas en gång. Varje
   lösenord som sätts med en kod loggas, så att ett övertagande syns.
 - **Återställning av Admin-lösenordet** kräver åtkomst till servern. Den körs som ett separat
   engångskommando, i en enda instans och utan webbserver, till exempel
