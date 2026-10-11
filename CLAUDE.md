@@ -38,6 +38,11 @@ och testerna använder Testcontainers.
 - Specifikationen ligger i delfiler. Redigera rätt delfil och länka mellan filer med relativa
   länkar, inte med avsnittsnummer.
 
+## Repo
+
+- Repot är publikt: inga hemligheter och inga riktiga personuppgifter, inte heller i testdata.
+- Ingen licensfil ska läggas till.
+
 ## Git
 
 - Commitmeddelanden är på svenska med prefix som `docs:` och `chore:`.
