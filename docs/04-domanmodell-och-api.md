@@ -151,7 +151,7 @@ avstämd.
 | `POST /auth/login` | öppen | Loggar in, sätter HttpOnly-cookie. Begränsat antal försök. |
 | `POST /auth/logout` | inloggad | Rensar cookien. |
 | `POST /auth/refresh` | inloggad | Förnyar token. |
-| `POST /auth/set-password` | öppen (med engångskod) | Sätter lösenordet med en engångskod: det första Admin-lösenordet och reservväg om lösenordet glömts bort. |
+| `POST /auth/set-password` | öppen (med engångskod) | Sätter lösenordet med en engångskod: ett kontos första lösenord och reservväg om lösenordet glömts bort. |
 
 **Medlemmar — Fas 1**
 

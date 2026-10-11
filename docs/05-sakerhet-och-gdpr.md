@@ -18,8 +18,9 @@ Del av [projektspecifikationen](00-oversikt.md).
 - **Begränsning av inloggningsförsök** (t.ex. tillfällig spärr efter upprepade felaktiga
   försök), eftersom inloggningssidan nu nås från en publik hemsida.
 - Valfritt men rekommenderat: **tvåstegsverifiering** för Admin-kontot.
-- **Engångskoder** används för det första Admin-lösenordet och som reservväg. Bara en hash av
-  koden lagras. Koden gäller 24 timmar (konfigurerbart) och kan bara användas en gång. Varje
+- **Engångskoder** används för ett kontos första lösenord och som reservväg. Admin-kontots
+  första kod skrivs i serverns logg när appen startar. Koder för Dokumenterare-kontot, och
+  reservkoder, skapas av Admin. Bara en hash av koden lagras. Koden gäller 24 timmar (konfigurerbart) och kan bara användas en gång. Varje
   lösenord som sätts med en kod loggas, så att ett övertagande syns.
 - **Återställning av Admin-lösenordet** kräver åtkomst till servern. Den körs som ett separat
   engångskommando, i en enda instans och utan webbserver, till exempel
