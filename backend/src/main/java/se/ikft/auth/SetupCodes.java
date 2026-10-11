@@ -36,20 +36,21 @@ final class SetupCodes {
 	}
 
 	/**
-	 * Tar bort bindestreck och blanksteg, gör om till versaler och rättar tecken som lätt förväxlas
-	 * (O blir 0, I och L blir 1).
+	 * Gör om till versaler, rättar tecken som lätt förväxlas (O blir 0, I och L blir 1) och behåller
+	 * bara tecken ur alfabetet. Bindestreck, blanksteg och t.ex. tankstreck eller hårda mellanslag från
+	 * en inklistrad kod försvinner alltså.
 	 */
 	static String normalize(String code) {
 		StringBuilder normalized = new StringBuilder();
 		for (char c : code.toUpperCase(Locale.ROOT).toCharArray()) {
-			if (c == '-' || Character.isWhitespace(c)) {
-				continue;
-			}
-			normalized.append(switch (c) {
+			char mapped = switch (c) {
 				case 'O' -> '0';
 				case 'I', 'L' -> '1';
 				default -> c;
-			});
+			};
+			if (ALPHABET.indexOf(mapped) >= 0) {
+				normalized.append(mapped);
+			}
 		}
 		return normalized.toString();
 	}

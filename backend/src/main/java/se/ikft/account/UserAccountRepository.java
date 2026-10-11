@@ -22,4 +22,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<UserAccount> findForUpdateByUsername(String username);
 
+	/** Som {@link #findForUpdateByUsername(String)}, men med kontots id. */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	Optional<UserAccount> findForUpdateById(UUID id);
+
 }

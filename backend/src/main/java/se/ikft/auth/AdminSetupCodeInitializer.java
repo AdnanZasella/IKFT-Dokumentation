@@ -1,6 +1,7 @@
 package se.ikft.auth;
 
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +38,14 @@ class AdminSetupCodeInitializer implements ApplicationRunner {
 	public void run(ApplicationArguments args) {
 		UserAccount admin = accounts.findByRole(Role.ADMIN)
 			.orElseThrow(() -> new IllegalStateException("Admin-kontot saknas i databasen."));
-		if (admin.hasPassword() || setupCodes.hasValidCode(admin)) {
+		Optional<NewSetupCode> created = setupCodes.createIfMissing(admin);
+		if (created.isEmpty()) {
 			return;
 		}
-		NewSetupCode code = setupCodes.createFor(admin);
+		NewSetupCode code = created.get();
 		// Det enda stället där koden finns i klartext. Den skrivs bara ut när den skapas.
-		log.warn("Admin-kontot saknar lösenord. Engångskod: {} (gäller till {}). "
-				+ "Sätt lösenordet med POST /api/v1/auth/set-password.", code.code(),
+		log.warn("Admin-kontot saknar lösenord. Användarnamn: {}, engångskod: {} (gäller till {}). "
+				+ "Sätt lösenordet med POST /api/v1/auth/set-password.", admin.getUsername(), code.code(),
 				code.validUntil().atZone(TimeConfig.ZONE).toLocalDateTime().truncatedTo(ChronoUnit.MINUTES));
 	}
 
