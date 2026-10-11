@@ -22,11 +22,12 @@ import se.ikft.common.config.TimeConfig;
  * och giltig kod skapas en kod som skrivs ut i loggen. Har koden tappats bort skrivs en ny ut vid
  * nästa start efter att raden i {@code setup_code} raderats eller koden gått ut.
  * <p>
- * Har Admin glömt lösenordet, eller har någon annan satt det, startar den som driftar servern appen
- * en gång med {@code ikft.auth.reset-admin-password=true}. Det kräver åtkomst till servern, som är det
- * enda som går att lita på när Admin inte kan logga in. Lösenordet tas bort, gamla sessioner slutar
- * gälla, en ny kod skrivs ut och appen stängs. Den kan alltså inte köras vidare med inställningen
- * kvar, så den kan inte glömmas och fortsätta skapa nya koder vid varje start.
+ * Har Admin glömt lösenordet, eller har någon annan satt det, kör den som driftar servern appen som
+ * ett engångskommando med {@code ikft.auth.reset-admin-password=true}. Det kräver åtkomst till
+ * servern, som är det enda som går att lita på när Admin inte kan logga in. Lösenordet tas bort, gamla
+ * sessioner slutar gälla, en ny kod skrivs ut och appen stängs med kod 0. Inställningen får inte ligga
+ * i tjänstens konfiguration: en tjänst som startas om automatiskt skulle återställa lösenordet och
+ * ersätta koden vid varje omstart.
  */
 @Component
 class AdminSetupCodeInitializer implements ApplicationRunner {
