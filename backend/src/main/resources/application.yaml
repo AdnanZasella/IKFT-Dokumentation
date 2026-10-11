@@ -8,5 +8,5 @@ spring:
 
 ikft:
   auth:
-    setup-code-validity: 72h
+    setup-code-validity: 24h
     password-min-length: 12

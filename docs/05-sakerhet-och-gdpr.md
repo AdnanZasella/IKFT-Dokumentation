@@ -14,6 +14,14 @@ Del av [projektspecifikationen](00-oversikt.md).
 - **Begränsning av inloggningsförsök** (t.ex. tillfällig spärr efter upprepade felaktiga
   försök), eftersom inloggningssidan nu nås från en publik hemsida.
 - Valfritt men rekommenderat: **tvåstegsverifiering** för Admin-kontot.
+- **Engångskoder** används för det första Admin-lösenordet och som reservväg. Bara en hash av
+  koden lagras. Koden gäller 24 timmar (konfigurerbart) och kan bara användas en gång. Varje
+  lösenord som sätts med en kod loggas, så att ett övertagande syns.
+- **Återställning av Admin-lösenordet** kräver åtkomst till servern: appen startas med
+  `ikft.auth.reset-admin-password=true` (miljövariabeln `IKFT_AUTH_RESET_ADMIN_PASSWORD=true`),
+  och en ny engångskod skrivs i loggen. Inställningen tas bort när lösenordet är satt. Det finns
+  ingen återställning via e-post, eftersom kontot delas och ingen e-postadress lagras. Serverns
+  logg ska därför behandlas som hemlig.
 
 **Den publika delen**
 - Det publika API:et är skrivskyddat och returnerar bara publicerade poster och publika fält.

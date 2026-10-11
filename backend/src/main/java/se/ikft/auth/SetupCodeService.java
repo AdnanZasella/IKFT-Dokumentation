@@ -8,6 +8,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,8 @@ public class SetupCodeService {
 	 * svaret inte avslöjar vilket fel det var.
 	 */
 	static final String INVALID_CODE = "Användarnamnet eller koden är fel, eller så har koden gått ut.";
+
+	private static final Logger log = LoggerFactory.getLogger(SetupCodeService.class);
 
 	private final SecureRandom random = new SecureRandom();
 
@@ -101,6 +105,10 @@ public class SetupCodeService {
 	 */
 	@Transactional
 	public void setPassword(String username, String code, String newPassword) {
+		// Postgres avvisar NUL i text med ett fel som annars blir ett annat svar än INVALID_CODE.
+		if (username.indexOf('\0') >= 0) {
+			throw new BadRequestException(INVALID_CODE);
+		}
 		// Låset gör att samma kod inte kan användas av två samtidiga anrop.
 		UserAccount account = accounts.findForUpdateByUsername(username)
 			.orElseThrow(() -> new BadRequestException(INVALID_CODE));
@@ -114,6 +122,8 @@ public class SetupCodeService {
 		setupCode.markUsed(now);
 		expireValidCodes(account, now);
 		account.changePassword(passwordEncoder.encode(Passwords.normalize(newPassword)), now);
+		// Gör att ett övertagande med en läckt kod syns i loggen. Koden loggas aldrig.
+		log.warn("Lösenordet för {} sattes med en engångskod.", account.getUsername());
 	}
 
 }

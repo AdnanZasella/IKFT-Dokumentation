@@ -2,6 +2,7 @@ package se.ikft.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import se.ikft.TestcontainersConfiguration;
+import se.ikft.account.UserAccountRepository;
 
 /**
  * Koden som skapas vid uppstart när Admin-kontot saknar lösenord. Initieringen körs redan när appen
@@ -41,6 +43,12 @@ class AdminSetupCodeInitializerTest {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	UserAccountRepository accounts;
+
+	@Autowired
+	SetupCodeService setupCodes;
 
 	@BeforeEach
 	@AfterEach
@@ -117,6 +125,37 @@ class AdminSetupCodeInitializerTest {
 
 		assertThat(jdbc.sql("SELECT count(*) FROM setup_code").query(Long.class).single()).isZero();
 		assertThat(LOGGAD_KOD.matcher(output.getOut().substring(start)).find()).isFalse();
+	}
+
+	@Test
+	void aterstallningSkaparKodTrotsLosenordOchKodenByterLosenordet(CapturedOutput output) {
+		jdbc.sql("UPDATE user_account SET password_hash = '$2a$10$finns' WHERE username = 'admin'").update();
+
+		int start = output.getOut().length();
+		aterstallning().run(null);
+		Matcher matcher = LOGGAD_KOD.matcher(output.getOut().substring(start));
+
+		assertThat(matcher.find()).isTrue();
+		assertThat(giltigaAdminKoder()).isEqualTo(1);
+		setupCodes.setPassword("admin", matcher.group(1), "ett-nytt-adminlosenord");
+		assertThat(jdbc.sql("SELECT password_hash FROM user_account WHERE username = 'admin'")
+			.query(String.class)
+			.single()).isNotEqualTo("$2a$10$finns");
+	}
+
+	@Test
+	void aterstallningErsatterTidigareKod() {
+		initializer.run(null);
+
+		aterstallning().run(null);
+
+		assertThat(giltigaAdminKoder()).isEqualTo(1);
+		assertThat(jdbc.sql("SELECT count(*) FROM setup_code").query(Long.class).single()).isEqualTo(2);
+	}
+
+	private AdminSetupCodeInitializer aterstallning() {
+		return new AdminSetupCodeInitializer(accounts, setupCodes,
+				new AuthProperties(Duration.ofHours(24), 12, true));
 	}
 
 	private long giltigaAdminKoder() {

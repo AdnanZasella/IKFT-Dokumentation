@@ -16,8 +16,11 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -36,6 +39,7 @@ import se.ikft.account.UserAccountRepository;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@ExtendWith(OutputCaptureExtension.class)
 class SetPasswordIntegrationTest {
 
 	private static final String NYTT_LOSENORD = "ett-langt-losenord";
@@ -86,6 +90,19 @@ class SetPasswordIntegrationTest {
 		assertThat(konto.get("token_version")).isEqualTo(1);
 		assertThat(jdbc.sql("SELECT count(*) FROM setup_code WHERE used_at IS NOT NULL").query(Long.class).single())
 			.isEqualTo(1);
+	}
+
+	@Test
+	void lyckatByteLoggasUtanKodOchLosenord(CapturedOutput output) throws Exception {
+		String kod = nyKod("dokumenterare");
+
+		int start = output.getOut().length();
+		setPassword("dokumenterare", kod, NYTT_LOSENORD).andExpect(status().isNoContent());
+		String logg = output.getOut().substring(start);
+
+		assertThat(logg).containsPattern("WARN .*Lösenordet för dokumenterare sattes med en engångskod")
+			.doesNotContain(kod)
+			.doesNotContain(NYTT_LOSENORD);
 	}
 
 	@Test
@@ -210,6 +227,12 @@ class SetPasswordIntegrationTest {
 			.andExpect(jsonPath("$.errors.length()").value(3))
 			.andExpect(jsonPath("$.errors[*].field").value(containsInAnyOrder("username",
 					"code", "newPassword")));
+	}
+
+	@Test
+	void ogiltigaTeckenIAnvandarnamnetGerSammaSvarSomFelaktigKod() throws Exception {
+		// Postgres godtar inte NUL i text, så värdet får inte nå databasen.
+		assertThat(felsvar("admin\\u0000", "0000-0000-0000")).isEqualTo(felKodSvar);
 	}
 
 	@Test
