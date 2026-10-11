@@ -4,10 +4,13 @@ import jakarta.servlet.DispatcherType;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
@@ -33,6 +36,8 @@ public class SecurityConfig {
 				// Felsidan svarar med ProblemDetail, se ProblemDetailErrorController.
 				.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
 				.requestMatchers("/api/v1/public/**").permitAll()
+				// Skyddas av engångskoden i stället för inloggning.
+				.requestMatchers(HttpMethod.POST, "/api/v1/auth/set-password").permitAll()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/v1/**").authenticated()
 				.anyRequest().denyAll())
@@ -40,6 +45,11 @@ public class SecurityConfig {
 				.authenticationEntryPoint(problemHandler)
 				.accessDeniedHandler(problemHandler));
 		return http.build();
+	}
+
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
 	}
 
 }

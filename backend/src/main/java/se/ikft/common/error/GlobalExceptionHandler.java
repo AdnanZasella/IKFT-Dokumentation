@@ -54,6 +54,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return Map.of("field", field, "message", String.valueOf(message));
 	}
 
+	@ExceptionHandler(BadRequestException.class)
+	ProblemDetail handleBadRequest(BadRequestException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+	}
+
 	@ExceptionHandler(NotFoundException.class)
 	ProblemDetail handleNotFound(NotFoundException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
