@@ -10,7 +10,11 @@ Del av [projektspecifikationen](00-oversikt.md).
   Muterande anrop skyddas med CSRF-token.
 - Rimlig giltighetstid och förnyelse (refresh) så att användare inte behöver logga in orimligt
   ofta på mobilen.
-- **Innehavarbyte ogiltigförklarar sessioner** via tokenversion.
+- **Innehavarbyte ogiltigförklarar sessioner** via tokenversion och kräver att lösenordet byts
+  vid första inloggningen (se
+  [Målgrupp och användarroller](01-dokumentationssystem.md#målgrupp-och-användarroller)). Så länge
+  kontot är markerat med "måste byta lösenord" nekas alla anrop med 403 utom byte av lösenord,
+  utloggning och `GET /auth/me`. Spärren ligger i backend, inte bara i gränssnittet.
 - **Begränsning av inloggningsförsök** (t.ex. tillfällig spärr efter upprepade felaktiga
   försök), eftersom inloggningssidan nu nås från en publik hemsida.
 - Valfritt men rekommenderat: **tvåstegsverifiering** för Admin-kontot.

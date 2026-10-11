@@ -73,8 +73,9 @@ Admin/Dok. ──> admin.<domän>.se (React, PWA) ──> /api/v1/*  (inloggning
   kan ha en eller flera **föreningsroller** över tid (t.ex. ordförande 2025, kassör 2026), som
   används i verksamhetsberättelsen och på hemsidans "Om oss"-sida (endast namn och roll).
 - **Användarkonto** — Admin och Dokumenterare. Identitet, lösenordshash, roll, **tokenversion**
-  (räknas upp vid innehavarbyte så att gamla sessioner blir ogiltiga) och **innehavare** — en
-  länk till vilken medlem som just nu ansvarar för kontot.
+  (räknas upp vid innehavarbyte och lösenordsbyte så att gamla sessioner blir ogiltiga),
+  flaggan **"måste byta lösenord"** (sätts vid innehavarbyte, nollställs när lösenordet byts) och
+  **innehavare** — en länk till vilken medlem som just nu ansvarar för kontot.
 - **Dokumenteraruppdrag** — kopplar Dokumenterare-kontot till en medlem under en period
   (startdatum, valfritt slutdatum, typ: ordinarie/tillfällig). Återställs varje årsskifte.
 
@@ -150,7 +151,7 @@ avstämd.
 | `POST /auth/login` | öppen | Loggar in, sätter HttpOnly-cookie. Begränsat antal försök. |
 | `POST /auth/logout` | inloggad | Rensar cookien. |
 | `POST /auth/refresh` | inloggad | Förnyar token. |
-| `POST /auth/set-password` | öppen (med engångskod) | Ny innehavare sätter eget lösenord. |
+| `POST /auth/set-password` | öppen (med engångskod) | Sätter lösenordet med en engångskod: det första Admin-lösenordet och reservväg om lösenordet glömts bort. |
 
 **Medlemmar — Fas 1**
 
@@ -169,7 +170,7 @@ avstämd.
 | Metod & path | Roll | Beskrivning |
 |---|---|---|
 | `GET /documenter-assignment/current` | Admin, Dokumenterare | Aktiv dokumenterare (eller att inget är satt). |
-| `POST /documenter-assignment` | Admin | Utse ordinarie dokumenterare (loggar ut kontot, engångskod för nytt lösenord). |
+| `POST /documenter-assignment` | Admin | Utse ordinarie dokumenterare (loggar ut kontot, kräver lösenordsbyte vid nästa inloggning). |
 | `POST /documenter-assignment/temporary` | Admin | Utse tillfällig dokumenterare med slutdatum. |
 | `DELETE /documenter-assignment/temporary` | Admin | Avsluta tillfälligt uppdrag i förtid. |
 
