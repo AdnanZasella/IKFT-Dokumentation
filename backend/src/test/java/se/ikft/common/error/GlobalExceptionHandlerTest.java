@@ -12,6 +12,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.sql.SQLException;
 
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.RequestDispatcher;
@@ -134,6 +135,15 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
+	void ogiltigtVardeIDatabasenGer400UtanDetaljer() throws Exception {
+		mockMvc.perform(get("/api/v1/test/ogiltigt-varde"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.detail").value("Begäran innehåller ogiltiga värden."))
+			.andExpect(content().string(not(containsString("0x00"))));
+	}
+
+	@Test
 	void felsidanSvararMedProblemDetail() throws Exception {
 		mockMvc.perform(get("/error").with(request -> {
 			request.setDispatcherType(DispatcherType.ERROR);
@@ -227,6 +237,12 @@ class GlobalExceptionHandlerTest {
 		String dubblett() {
 			throw new DataIntegrityViolationException("duplicate key value violates unique constraint "
 					+ "\"user_account_username_key\"");
+		}
+
+		@GetMapping("/api/v1/test/ogiltigt-varde")
+		String ogiltigtVarde() {
+			throw new DataIntegrityViolationException("could not execute statement",
+					new SQLException("invalid byte sequence for encoding \"UTF8\": 0x00", "22021"));
 		}
 
 	}

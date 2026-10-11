@@ -18,8 +18,9 @@ class AuthPropertiesTest {
 	void standardvardenGaller() {
 		runner.run(context -> {
 			AuthProperties properties = context.getBean(AuthProperties.class);
-			assertThat(properties.setupCodeValidity()).isEqualTo(Duration.ofHours(72));
+			assertThat(properties.setupCodeValidity()).isEqualTo(Duration.ofHours(24));
 			assertThat(properties.passwordMinLength()).isEqualTo(12);
+			assertThat(properties.resetAdminPassword()).isFalse();
 		});
 	}
 

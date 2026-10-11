@@ -14,6 +14,18 @@ Del av [projektspecifikationen](00-oversikt.md).
 - **Begränsning av inloggningsförsök** (t.ex. tillfällig spärr efter upprepade felaktiga
   försök), eftersom inloggningssidan nu nås från en publik hemsida.
 - Valfritt men rekommenderat: **tvåstegsverifiering** för Admin-kontot.
+- **Engångskoder** används för det första Admin-lösenordet och som reservväg. Bara en hash av
+  koden lagras. Koden gäller 24 timmar (konfigurerbart) och kan bara användas en gång. Varje
+  lösenord som sätts med en kod loggas, så att ett övertagande syns.
+- **Återställning av Admin-lösenordet** kräver åtkomst till servern. Den körs som ett separat
+  engångskommando, i en enda instans och utan webbserver, till exempel
+  `java -jar backend.jar --ikft.auth.reset-admin-password=true --spring.main.web-application-type=none`.
+  Lösenordet tas bort, alla sessioner loggas ut, en ny engångskod skrivs i loggen och kommandot
+  avslutas. Därefter startas appen som vanligt och Admin sätter lösenordet med koden. Inställningen
+  ska inte läggas i tjänstens konfiguration: appen avslutas med kod 0, och en tjänst som startas om
+  automatiskt (t.ex. `restart: always` i Docker) skulle återställa lösenordet och ersätta koden vid
+  varje omstart. Det finns ingen återställning via e-post, eftersom kontot delas och ingen
+  e-postadress lagras. Serverns logg ska därför behandlas som hemlig.
 
 **Den publika delen**
 - Det publika API:et är skrivskyddat och returnerar bara publicerade poster och publika fält.

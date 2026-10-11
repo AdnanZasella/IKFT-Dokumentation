@@ -8,9 +8,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import se.ikft.account.UserAccount;
 import se.ikft.account.UserAccountRepository;
@@ -28,6 +32,8 @@ public class SetupCodeService {
 	 * svaret inte avslöjar vilket fel det var.
 	 */
 	static final String INVALID_CODE = "Användarnamnet eller koden är fel, eller så har koden gått ut.";
+
+	private static final Logger log = LoggerFactory.getLogger(SetupCodeService.class);
 
 	private final SecureRandom random = new SecureRandom();
 
@@ -77,6 +83,20 @@ public class SetupCodeService {
 		return Optional.of(create(locked, now));
 	}
 
+	/**
+	 * Återställer kontot: tar bort lösenordet, räknar upp tokenversionen och skapar en ny kod. Används
+	 * när lösenordet kan ha hamnat hos fel person, så att det gamla lösenordet och gamla sessioner
+	 * slutar gälla direkt och inte först när den nya koden används.
+	 */
+	@Transactional
+	public NewSetupCode reset(UserAccount account) {
+		UserAccount locked = lock(account);
+		Instant now = clock.instant();
+		locked.clearPassword(now);
+		expireValidCodes(locked, now);
+		return create(locked, now);
+	}
+
 	private UserAccount lock(UserAccount account) {
 		return accounts.findForUpdateById(account.getId())
 			.orElseThrow(() -> new IllegalStateException("Kontot finns inte: " + account.getId()));
@@ -114,6 +134,15 @@ public class SetupCodeService {
 		setupCode.markUsed(now);
 		expireValidCodes(account, now);
 		account.changePassword(passwordEncoder.encode(Passwords.normalize(newPassword)), now);
+		// Gör att ett övertagande med en läckt kod syns i loggen. Loggas först efter commit, så att
+		// raden bara finns om lösenordet faktiskt byttes. Koden loggas aldrig.
+		String changed = account.getUsername();
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				log.warn("Lösenordet för {} sattes med en engångskod.", changed);
+			}
+		});
 	}
 
 }

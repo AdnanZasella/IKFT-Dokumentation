@@ -5,8 +5,3 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
-
-ikft:
-  auth:
-    setup-code-validity: 72h
-    password-min-length: 12

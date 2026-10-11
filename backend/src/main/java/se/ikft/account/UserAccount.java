@@ -48,6 +48,16 @@ public class UserAccount {
 		this.updatedAt = now;
 	}
 
+	/**
+	 * Tar bort lösenordet och räknar upp tokenversionen, så att varken det gamla lösenordet eller
+	 * gamla sessioner fungerar.
+	 */
+	public void clearPassword(Instant now) {
+		this.passwordHash = null;
+		this.tokenVersion++;
+		this.updatedAt = now;
+	}
+
 	public boolean hasPassword() {
 		return passwordHash != null;
 	}
