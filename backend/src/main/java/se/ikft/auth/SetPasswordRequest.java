@@ -1,9 +1,12 @@
 package se.ikft.auth;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
- * Lösenordskraven kontrolleras i {@link SetupCodeService}, eftersom minsta längd är konfigurerbar.
+ * Gränserna avvisar stora värden innan de bearbetas. Användarnamnet får vara lika långt som i
+ * databasen och koden har marginal för blanksteg och bindestreck.
  */
-record SetPasswordRequest(@NotBlank String username, @NotBlank String code, @NotBlank String newPassword) {
+record SetPasswordRequest(@NotBlank @Size(max = 50) String username, @NotBlank @Size(max = 32) String code,
+		@NotBlank @ValidPassword String newPassword) {
 }

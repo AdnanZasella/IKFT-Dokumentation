@@ -2,6 +2,11 @@ package se.ikft.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,7 +34,7 @@ import se.ikft.TestcontainersConfiguration;
 @ExtendWith(OutputCaptureExtension.class)
 class AdminSetupCodeInitializerTest {
 
-	private static final Pattern LOGGAD_KOD = Pattern.compile("Engångskod: ([0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4})");
+	private static final Pattern LOGGAD_KOD = Pattern.compile("engångskod: ([0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4})");
 
 	@Autowired
 	AdminSetupCodeInitializer initializer;
@@ -53,7 +58,7 @@ class AdminSetupCodeInitializerTest {
 		assertThat(giltigaAdminKoder()).isEqualTo(1);
 		Matcher matcher = LOGGAD_KOD.matcher(logg);
 		assertThat(matcher.find()).isTrue();
-		assertThat(logg).containsPattern("WARN .*Engångskod");
+		assertThat(logg).containsPattern("WARN .*Användarnamn: admin, engångskod");
 		assertThat(jdbc.sql("SELECT code_hash FROM setup_code").query(String.class).single())
 			.isEqualTo(SetupCodes.hash(matcher.group(1)));
 	}
@@ -65,6 +70,31 @@ class AdminSetupCodeInitializerTest {
 		initializer.run(null);
 
 		assertThat(giltigaAdminKoder()).isEqualTo(1);
+		assertThat(LOGGAD_KOD.matcher(output.getOut().substring(start)).results().count()).isEqualTo(1);
+	}
+
+	@Test
+	void tvaSamtidigaStarterSkaparBaraEnKod(CapturedOutput output) throws Exception {
+		int start = output.getOut().length();
+		CountDownLatch klar = new CountDownLatch(1);
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			List<Future<?>> korningar = List.of(pool.submit(() -> {
+				klar.await();
+				initializer.run(null);
+				return null;
+			}), pool.submit(() -> {
+				klar.await();
+				initializer.run(null);
+				return null;
+			}));
+			klar.countDown();
+			for (Future<?> korning : korningar) {
+				korning.get();
+			}
+		}
+
+		assertThat(giltigaAdminKoder()).isEqualTo(1);
+		assertThat(jdbc.sql("SELECT count(*) FROM setup_code").query(Long.class).single()).isEqualTo(1);
 		assertThat(LOGGAD_KOD.matcher(output.getOut().substring(start)).results().count()).isEqualTo(1);
 	}
 

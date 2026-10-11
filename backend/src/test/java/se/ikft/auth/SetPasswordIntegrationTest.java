@@ -2,12 +2,14 @@ package se.ikft.auth;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.security.MessageDigest;
+import java.text.Normalizer;
 import java.util.HexFormat;
 import java.util.Map;
 
@@ -132,6 +134,23 @@ class SetPasswordIntegrationTest {
 	}
 
 	@Test
+	void andraGiltigaKoderSlutarGallaNarLosenordetSatts() throws Exception {
+		String kod = nyKod("dokumenterare");
+		// En andra giltig kod, som createFor annars aldrig lämnar kvar.
+		String annan = "2222-3333-4444";
+		jdbc.sql("""
+				INSERT INTO setup_code (user_account_id, code_hash, valid_until)
+				SELECT id, ?, now() + interval '1 hour' FROM user_account WHERE username = 'dokumenterare'
+				""").param(SetupCodes.hash(annan)).update();
+
+		setPassword("dokumenterare", kod, NYTT_LOSENORD).andExpect(status().isNoContent());
+		String hash = losenordshash("dokumenterare");
+
+		assertThat(felsvar("dokumenterare", annan)).isEqualTo(felKodSvar);
+		assertThat(losenordshash("dokumenterare")).isEqualTo(hash);
+	}
+
+	@Test
 	void okantAnvandarnamnGerSammaSvarSomFelaktigKod() throws Exception {
 		String kod = nyKod("dokumenterare");
 
@@ -165,7 +184,9 @@ class SetPasswordIntegrationTest {
 
 		setPassword("dokumenterare", kod, "a".repeat(11)).andExpect(status().isBadRequest())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.detail").value("Lösenordet måste ha minst 12 tecken."));
+			.andExpect(jsonPath("$.errors.length()").value(1))
+			.andExpect(jsonPath("$.errors[0].field").value("newPassword"))
+			.andExpect(jsonPath("$.errors[0].message").value("Lösenordet måste ha minst 12 tecken."));
 		assertThat(losenordshash("dokumenterare")).isNull();
 
 		setPassword("dokumenterare", kod, "a".repeat(12)).andExpect(status().isNoContent());
@@ -177,8 +198,30 @@ class SetPasswordIntegrationTest {
 
 		// 37 × 2 byte = 74 byte, över BCrypts gräns på 72.
 		setPassword("dokumenterare", kod, "å".repeat(37)).andExpect(status().isBadRequest())
-			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.errors[0].field").value("newPassword"))
+			.andExpect(jsonPath("$.errors[0].message").value(Passwords.TOO_LONG));
 		assertThat(losenordshash("dokumenterare")).isNull();
+	}
+
+	@Test
+	void mycketLangaFaltAvvisas() throws Exception {
+		setPassword("a".repeat(51), "0".repeat(33), "a".repeat(10_000)).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors.length()").value(3))
+			.andExpect(jsonPath("$.errors[*].field").value(containsInAnyOrder("username",
+					"code", "newPassword")));
+	}
+
+	@Test
+	void losenordetNormaliserasTillNfcInnanDetHashas() throws Exception {
+		String kod = nyKod("dokumenterare");
+		String nfc = "Trollhättan-moskén";
+		String nfd = Normalizer.normalize(nfc, Normalizer.Form.NFD);
+		assertThat(nfd).isNotEqualTo(nfc);
+
+		setPassword("dokumenterare", kod, nfd).andExpect(status().isNoContent());
+
+		assertThat(passwordEncoder.matches(nfc, losenordshash("dokumenterare"))).isTrue();
 	}
 
 	@Test

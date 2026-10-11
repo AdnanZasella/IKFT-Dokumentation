@@ -36,6 +36,11 @@ class SetupCodesTest {
 	}
 
 	@Test
+	void normaliseringTarBortTankstreckOchHardaMellanslagFranInklistradeKoder() {
+		assertThat(SetupCodes.normalize("7KQ2–M9XR 4HTD")).isEqualTo("7KQ2M9XR4HTD");
+	}
+
+	@Test
 	void sammaKodGerSammaHashOavsettSkrivsatt() {
 		assertThat(SetupCodes.hash("7kq2 m9xr 4htd")).isEqualTo(SetupCodes.hash("7KQ2-M9XR-4HTD"))
 			.matches("[0-9a-f]{64}");
