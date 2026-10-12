@@ -13,6 +13,7 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import jakarta.servlet.http.Cookie;
@@ -71,6 +72,9 @@ class JwtAuthenticationIntegrationTest {
 
 	@Autowired
 	Clock clock;
+
+	@Autowired
+	JwtProperties jwtProperties;
 
 	@BeforeEach
 	void forbered() {
@@ -146,6 +150,27 @@ class JwtAuthenticationIntegrationTest {
 		Instant nu = clock.instant();
 
 		me(signera(annan, claims("admin", 0, nu, nu.plusSeconds(600)))).andExpect(problem401());
+	}
+
+	@Test
+	void handskrivenTokenMedHs256GarIgenom() throws Exception {
+		// Visar att testerna nedan bara skiljer sig i algoritmen.
+		me(signeraForHand("HS256", "HmacSHA256", login("admin"))).andExpect(status().isOk());
+	}
+
+	@Test
+	void tokenMedAnnanAlgoritmGer401() throws Exception {
+		String token = login("admin");
+
+		me(signeraForHand("HS384", "HmacSHA384", token)).andExpect(problem401());
+		me(signeraForHand("HS512", "HmacSHA512", token)).andExpect(problem401());
+	}
+
+	@Test
+	void tokenUtanSignaturGer401() throws Exception {
+		String payload = login("admin").split("\\.")[1];
+
+		me(base64Url("{\"alg\":\"none\"}") + "." + payload + ".").andExpect(problem401());
 	}
 
 	@Test
@@ -231,6 +256,19 @@ class JwtAuthenticationIntegrationTest {
 	private static String signera(JwtEncoder encoder, JwtClaimsSet claims) {
 		return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
 			.getTokenValue();
+	}
+
+	/** Samma innehåll som {@code token}, signerat med appens nyckel och den angivna algoritmen. */
+	private String signeraForHand(String alg, String macAlgoritm, String token) throws Exception {
+		String osignerad = base64Url("{\"alg\":\"%s\"}".formatted(alg)) + "." + token.split("\\.")[1];
+		Mac mac = Mac.getInstance(macAlgoritm);
+		mac.init(new SecretKeySpec(jwtProperties.key().getEncoded(), macAlgoritm));
+		byte[] signatur = mac.doFinal(osignerad.getBytes(UTF_8));
+		return osignerad + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(signatur);
+	}
+
+	private static String base64Url(String text) {
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(text.getBytes(UTF_8));
 	}
 
 	private static ResultMatcher problem401() {
