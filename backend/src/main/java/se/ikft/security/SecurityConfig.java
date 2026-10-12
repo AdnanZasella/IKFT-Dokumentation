@@ -21,6 +21,8 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationEntryPointFailureHandler;
+import org.springframework.security.web.header.writers.CacheControlHeadersWriter;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
@@ -47,8 +49,8 @@ public class SecurityConfig {
 	public static final String CSRF_COOKIE_NAME = "__Host-XSRF-TOKEN";
 
 	/**
-	 * Det som är öppet för alla. Det har en egen kedja utan inloggning och utan CSRF, så att en ogiltig
-	 * inloggningscookie inte ger 401 och svaren inte får någon cookie som hindrar cachning.
+	 * Det som är öppet för alla att läsa. Det har en egen kedja utan inloggning och utan CSRF, så att en
+	 * ogiltig inloggningscookie inte ger 401 och svaren inte får någon cookie som hindrar cachning.
 	 */
 	static final String[] PUBLIC_PATHS = { "/api/v1/public/**", "/actuator/health", "/actuator/health/**" };
 
@@ -74,11 +76,18 @@ public class SecurityConfig {
 			.formLogin(AbstractHttpConfigurer::disable)
 			.logout(AbstractHttpConfigurer::disable)
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-			// Varje endpoint bestämmer själv hur länge svaret får cachas.
-			.headers(headers -> headers.cacheControl(HeadersConfigurer.CacheControlConfig::disable))
-			.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-			// Behövs trots permitAll: metodskydd (@PreAuthorize) på en publik endpoint ger annars 403 i
-			// stället för 401 för den som inte är inloggad.
+			// Varje publik endpoint bestämmer själv hur länge svaret får cachas. Hälsokontrollen cachas aldrig,
+			// så att en proxy inte visar UP efter att appen har gått ner.
+			.headers(headers -> headers.cacheControl(HeadersConfigurer.CacheControlConfig::disable)
+				.addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+						PathPatternRequestMatcher.withDefaults().matcher("/actuator/**"), new CacheControlHeadersWriter())))
+			// Det publika API:et är skrivskyddat. Allt som ändrar data går genom huvudkedjan med inloggning.
+			.authorizeHttpRequests(auth -> auth
+				.requestMatchers(HttpMethod.GET).permitAll()
+				.requestMatchers(HttpMethod.HEAD).permitAll()
+				.anyRequest().denyAll())
+			// Metodskydd (@PreAuthorize) på en publik endpoint och nekade metoder ger annars 403 i stället för
+			// 401 för den som inte är inloggad.
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint(problemHandler)
 				.accessDeniedHandler(problemHandler));

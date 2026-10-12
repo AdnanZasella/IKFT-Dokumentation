@@ -1,8 +1,11 @@
 package se.ikft.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -137,16 +140,33 @@ class CsrfIntegrationTest {
 	@Test
 	void publikaSvarFarIngenCacheControlFranSakerhetskedjan() throws Exception {
 		// Varje publik endpoint bestämmer själv hur länge svaret får cachas.
+		assertThat(mockMvc.perform(get("/api/v1/public/finns-inte"))
+			.andExpect(status().isNotFound())
+			.andReturn()
+			.getResponse()
+			.getHeader(HttpHeaders.CACHE_CONTROL)).isNull();
+		// Hälsokontrollen och admin-API:et ska fortfarande inte cachas.
 		assertThat(mockMvc.perform(get("/actuator/health"))
 			.andExpect(status().isOk())
 			.andReturn()
 			.getResponse()
-			.getHeader(HttpHeaders.CACHE_CONTROL)).isNull();
-		// Admin-API:et ska fortfarande inte cachas.
+			.getHeader(HttpHeaders.CACHE_CONTROL)).contains("no-store");
 		assertThat(mockMvc.perform(get("/api/v1/auth/me").cookie(inloggning))
 			.andReturn()
 			.getResponse()
 			.getHeader(HttpHeaders.CACHE_CONTROL)).contains("no-store");
+	}
+
+	@Test
+	void publikaApietArSkrivskyddat() throws Exception {
+		// Ingen sådan endpoint finns, så 401 i stället för 404 visar att säkerhetskedjan nekade anropet.
+		mockMvc.perform(post("/api/v1/public/finns-inte")).andExpect(status().isUnauthorized());
+		mockMvc.perform(put("/api/v1/public/finns-inte")).andExpect(status().isUnauthorized());
+		mockMvc.perform(delete("/api/v1/public/finns-inte")).andExpect(status().isUnauthorized());
+		// Inte heller med inloggning, eftersom den publika kedjan inte läser inloggningscookien.
+		mockMvc.perform(post("/api/v1/public/finns-inte").cookie(inloggning, csrf).header(CSRF_HEADER, csrf.getValue()))
+			.andExpect(status().isUnauthorized());
+		mockMvc.perform(head("/api/v1/public/finns-inte")).andExpect(status().isNotFound());
 	}
 
 	@Test
