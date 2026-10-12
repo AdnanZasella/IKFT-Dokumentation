@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
@@ -29,6 +30,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -67,6 +69,9 @@ class JwtAuthenticationIntegrationTest {
 	@Autowired
 	UserAccountRepository accounts;
 
+	@Autowired
+	Clock clock;
+
 	@BeforeEach
 	void forbered() {
 		aterstall();
@@ -90,10 +95,37 @@ class JwtAuthenticationIntegrationTest {
 
 	@Test
 	void utgangenTokenGer401() throws Exception {
-		Instant tidigare = Instant.now().minusSeconds(3600);
+		Instant tidigare = clock.instant().minusSeconds(3600);
 		String token = signera(jwtEncoder, claims("admin", 0, tidigare, tidigare.plusSeconds(60)));
 
 		me(token).andExpect(problem401());
+	}
+
+	@Test
+	void tokenSomNyssGattUtGer401() throws Exception {
+		// Ingen tidsavvikelse tillåts.
+		Instant nu = clock.instant();
+		String token = signera(jwtEncoder, claims("admin", 0, nu.minusSeconds(600), nu.minusSeconds(1)));
+
+		me(token).andExpect(problem401());
+	}
+
+	@Test
+	void tokenUtanUtgangstidGer401() throws Exception {
+		Instant nu = clock.instant();
+		String token = signera(jwtEncoder, claims("admin", 0, nu, nu.plusSeconds(600), b -> b.claims(c -> c
+			.remove(JwtClaimNames.EXP))));
+
+		me(token).andExpect(problem401());
+	}
+
+	@Test
+	void ogiltigCookieHindrarInteDetPublika() throws Exception {
+		Cookie ogiltig = new Cookie(AccessTokens.COOKIE_NAME, "inte.en.token");
+
+		mockMvc.perform(get("/actuator/health").cookie(ogiltig)).andExpect(status().isOk());
+		// Ingen publik endpoint finns än, så 404 visar att begäran släpptes igenom.
+		mockMvc.perform(get("/api/v1/public/finns-inte").cookie(ogiltig)).andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -111,7 +143,7 @@ class JwtAuthenticationIntegrationTest {
 		byte[] annanNyckel = new byte[32];
 		annanNyckel[0] = 1;
 		JwtEncoder annan = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(annanNyckel, "HmacSHA256")));
-		Instant nu = Instant.now();
+		Instant nu = clock.instant();
 
 		me(signera(annan, claims("admin", 0, nu, nu.plusSeconds(600)))).andExpect(problem401());
 	}
@@ -127,7 +159,7 @@ class JwtAuthenticationIntegrationTest {
 
 	@Test
 	void tokenUtanTokenversionGer401() throws Exception {
-		Instant nu = Instant.now();
+		Instant nu = clock.instant();
 		String token = signera(jwtEncoder, claims("admin", 0, nu, nu.plusSeconds(600), b -> b.claims(c -> c
 			.remove(AccessTokens.TOKEN_VERSION_CLAIM))));
 
@@ -136,7 +168,7 @@ class JwtAuthenticationIntegrationTest {
 
 	@Test
 	void tokenForEttKontoSomInteFinnsGer401() throws Exception {
-		Instant nu = Instant.now();
+		Instant nu = clock.instant();
 		String token = signera(jwtEncoder, claims("admin", 0, nu, nu.plusSeconds(600),
 				b -> b.subject(UUID.randomUUID().toString())));
 

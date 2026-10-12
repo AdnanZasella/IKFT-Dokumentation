@@ -21,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import se.ikft.TestcontainersConfiguration;
 import se.ikft.security.AccessTokens;
+import se.ikft.security.SecurityConfig;
 
 /**
  * Cookies från inloggningen genom en riktig Tomcat. MockMvc skiljer sig från servern här: den behåller
@@ -72,7 +73,7 @@ class LoginCookiesServerTest {
 		assertThat(cookies).hasSize(2);
 		assertThat(cookie(cookies, AccessTokens.COOKIE_NAME)).contains("HttpOnly", "Secure", "SameSite=Strict",
 				"Path=/");
-		assertThat(cookie(cookies, "XSRF-TOKEN")).contains("Secure", "SameSite=Strict", "Path=/")
+		assertThat(cookie(cookies, SecurityConfig.CSRF_COOKIE_NAME)).contains("Secure", "SameSite=Strict", "Path=/")
 			.doesNotContain("HttpOnly");
 	}
 

@@ -36,7 +36,7 @@ class CsrfIntegrationTest {
 
 	private static final String LOSENORD = "ett-langt-losenord";
 
-	private static final String CSRF_COOKIE = "XSRF-TOKEN";
+	private static final String CSRF_COOKIE = SecurityConfig.CSRF_COOKIE_NAME;
 
 	private static final String CSRF_HEADER = "X-XSRF-TOKEN";
 
@@ -106,6 +106,20 @@ class CsrfIntegrationTest {
 	@Test
 	void getKraverIngenCsrfToken() throws Exception {
 		mockMvc.perform(get("/api/v1/auth/me").cookie(inloggning)).andExpect(status().isOk());
+	}
+
+	@Test
+	void publikaSvarFarIngenCookie() throws Exception {
+		// En cookie i svaret hindrar att det cachas.
+		assertThat(mockMvc.perform(get("/actuator/health").cookie(inloggning, csrf))
+			.andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getHeaders(HttpHeaders.SET_COOKIE)).isEmpty();
+		assertThat(mockMvc.perform(get("/api/v1/public/finns-inte"))
+			.andReturn()
+			.getResponse()
+			.getHeaders(HttpHeaders.SET_COOKIE)).isEmpty();
 	}
 
 	@Test

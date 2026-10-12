@@ -3,6 +3,7 @@ package se.ikft.security;
 import java.time.Clock;
 import java.time.Instant;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -18,9 +19,11 @@ import se.ikft.account.UserAccount;
  * så att inloggning, lösenordsbyte och förnyelse sätter likadana cookies.
  */
 @Component
+@ConditionalOnWebApplication
 public class AccessTokens {
 
-	public static final String COOKIE_NAME = "ikft_access";
+	/** Med prefixet {@code __Host-} kan cookien bara sättas av värden själv, inte av en annan subdomän. */
+	public static final String COOKIE_NAME = "__Host-ikft_access";
 
 	static final String ROLE_CLAIM = "role";
 

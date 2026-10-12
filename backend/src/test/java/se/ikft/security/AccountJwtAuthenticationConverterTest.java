@@ -76,7 +76,7 @@ class AccountJwtAuthenticationConverterTest {
 	}
 
 	private static Jwt jwt(String subject, int tokenVersion) {
-		Instant nu = Instant.now();
+		Instant nu = Instant.parse("2026-10-12T10:00:00Z");
 		return Jwt.withTokenValue("token")
 			.header("alg", "HS256")
 			.subject(subject)

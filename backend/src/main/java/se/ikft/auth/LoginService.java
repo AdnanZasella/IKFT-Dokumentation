@@ -6,11 +6,11 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import se.ikft.account.UserAccount;
 import se.ikft.account.UserAccountRepository;
@@ -20,6 +20,7 @@ import se.ikft.security.AccessTokens;
  * Inloggning med användarnamn och lösenord.
  */
 @Service
+@ConditionalOnWebApplication
 class LoginService {
 
 	/**
@@ -57,7 +58,10 @@ class LoginService {
 	record LoginResult(ResponseCookie cookie, AccountInfo account) {
 	}
 
-	@Transactional(readOnly = true)
+	/**
+	 * Körs utan transaktion, så att ingen databasanslutning hålls medan lösenordet jämförs. Kontot
+	 * läses i en egen kort transaktion.
+	 */
 	public LoginResult login(String username, String password) {
 		Optional<UserAccount> found = accounts.findByUsername(username);
 		Optional<UserAccount> withPassword = found.filter(UserAccount::hasPassword);

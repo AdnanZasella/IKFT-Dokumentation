@@ -27,6 +27,14 @@ class JwtPropertiesTest {
 	}
 
 	@Test
+	void toStringVisarInteNyckeln() {
+		String nyckel = Base64.getEncoder().encodeToString("en-hemlig-nyckel-pa-minst-32-byte".getBytes());
+		JwtProperties properties = new JwtProperties(nyckel, Duration.ofMinutes(15));
+
+		assertThat(properties.toString()).doesNotContain(nyckel).contains("PT15M");
+	}
+
+	@Test
 	void nyckelSomSaknasStopparUppstarten() {
 		runner.run(context -> assertThat(context).hasFailed());
 	}

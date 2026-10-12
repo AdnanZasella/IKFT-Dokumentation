@@ -2,8 +2,10 @@ package se.ikft.security;
 
 import jakarta.servlet.DispatcherType;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -28,14 +30,30 @@ import se.ikft.account.UserAccountRepository;
 /**
  * Nekar allt som inte uttryckligen är öppet. 401 och 403 skrivs av {@link ProblemDetailSecurityHandler}
  * så att de får samma {@code ProblemDetail}-format som övriga fel.
+ * <p>
+ * Kedjorna skapas bara när appen körs som webbapp. Som engångskommando (återställningen av
+ * Admin-lösenordet) finns ingen inloggning, och då behövs ingen JWT-nyckel.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
 public class SecurityConfig {
 
 	/**
-	 * Anropen som görs utan att vara inloggad. De kräver ingen CSRF-token, och inloggningscookien läses
-	 * inte, så att en utgången cookie inte stoppar dem.
+	 * Med prefixet {@code __Host-} kan cookien bara sättas av värden själv, inte av en annan subdomän.
+	 * Klienten skickar token i {@code X-XSRF-TOKEN}.
+	 */
+	public static final String CSRF_COOKIE_NAME = "__Host-XSRF-TOKEN";
+
+	/**
+	 * Det som är öppet för alla. Det har en egen kedja utan inloggning och utan CSRF, så att en ogiltig
+	 * inloggningscookie inte ger 401 och svaren inte får någon cookie som hindrar cachning.
+	 */
+	static final String[] PUBLIC_PATHS = { "/api/v1/public/**", "/actuator/health", "/actuator/health/**" };
+
+	/**
+	 * Anropen i admin-appen som görs utan att vara inloggad. De kräver ingen CSRF-token, och
+	 * inloggningscookien läses inte, så att en utgången cookie inte stoppar dem. De ligger kvar i
+	 * huvudkedjan, så att klienten får CSRF-cookien redan vid inloggningen.
 	 */
 	static final RequestMatcher WITHOUT_LOGIN = new OrRequestMatcher(
 			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/login"),
@@ -43,12 +61,32 @@ public class SecurityConfig {
 			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/set-password"));
 
 	@Bean
+	@Order(1)
+	@ConditionalOnWebApplication
+	SecurityFilterChain publicFilterChain(HttpSecurity http) throws Exception {
+		ProblemDetailSecurityHandler problemHandler = new ProblemDetailSecurityHandler();
+		http.securityMatcher(PUBLIC_PATHS)
+			.csrf(AbstractHttpConfigurer::disable)
+			.httpBasic(AbstractHttpConfigurer::disable)
+			.formLogin(AbstractHttpConfigurer::disable)
+			.logout(AbstractHttpConfigurer::disable)
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+			.exceptionHandling(exceptions -> exceptions
+				.authenticationEntryPoint(problemHandler)
+				.accessDeniedHandler(problemHandler));
+		return http.build();
+	}
+
+	@Bean
+	@Order(2)
+	@ConditionalOnWebApplication
 	SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder,
 			UserAccountRepository accounts) throws Exception {
 		ProblemDetailSecurityHandler problemHandler = new ProblemDetailSecurityHandler();
 		http
 			// Inloggningen ligger i en cookie, så anrop som ändrar data kräver en CSRF-token. Klienten läser
-			// den ur XSRF-TOKEN-cookien och skickar den i X-XSRF-TOKEN.
+			// den ur CSRF-cookien och skickar den i X-XSRF-TOKEN.
 			.csrf(csrf -> csrf.spa().csrfTokenRepository(csrfTokenRepository()).ignoringRequestMatchers(WITHOUT_LOGIN))
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.formLogin(AbstractHttpConfigurer::disable)
@@ -58,9 +96,7 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				// Felsidan svarar med ProblemDetail, se ProblemDetailErrorController.
 				.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-				.requestMatchers("/api/v1/public/**").permitAll()
 				.requestMatchers(WITHOUT_LOGIN).permitAll()
-				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/v1/**").authenticated()
 				.anyRequest().denyAll())
 			.exceptionHandling(exceptions -> exceptions
@@ -91,6 +127,7 @@ public class SecurityConfig {
 	/** Läsbar för klientens JavaScript, men bara över HTTPS och bara från samma webbplats. */
 	private static CookieCsrfTokenRepository csrfTokenRepository() {
 		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+		repository.setCookieName(CSRF_COOKIE_NAME);
 		repository.setCookieCustomizer(cookie -> cookie.secure(true).sameSite("Strict").path("/"));
 		return repository;
 	}
