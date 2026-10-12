@@ -27,9 +27,6 @@ class LoginService {
 	 */
 	static final String INVALID_CREDENTIALS = "Fel användarnamn eller lösenord.";
 
-	/** Samma gräns som kolumnen {@code user_account.username}. */
-	private static final int MAX_USERNAME_LENGTH = 50;
-
 	/** Jämförs i stället för ett lösenord som inte kan vara rätt, så att BCrypt ändå körs. */
 	private static final String UNUSABLE_PASSWORD = "inget-konto-har-det-har-losenordet";
 
@@ -90,7 +87,7 @@ class LoginService {
 	 * avvisar, ger samma svar som ett okänt användarnamn.
 	 */
 	private static boolean isPossibleUsername(String username) {
-		return !username.isBlank() && username.length() <= MAX_USERNAME_LENGTH
+		return !username.isBlank() && username.length() <= UserAccount.MAX_USERNAME_LENGTH
 				&& username.chars().noneMatch(Character::isISOControl);
 	}
 

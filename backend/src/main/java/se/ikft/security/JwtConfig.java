@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.jwt.JwtTypeValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
@@ -44,7 +45,8 @@ class JwtConfig {
 			.build();
 		JwtTimestampValidator timestamps = new JwtTimestampValidator(Duration.ZERO);
 		timestamps.setClock(clock);
-		decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(timestamps,
+		// setJwtValidator ersätter standardvalideringen, så kontrollen av typ läggs till här igen.
+		decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtTypeValidator.jwt(), timestamps,
 				new JwtClaimValidator<Instant>(JwtClaimNames.EXP, Objects::nonNull)));
 		return decoder;
 	}

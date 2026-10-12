@@ -170,6 +170,14 @@ class JwtAuthenticationIntegrationTest {
 	}
 
 	@Test
+	void tokenMedAnnanTypGer401() throws Exception {
+		String token = login("admin");
+
+		me(signeraForHand("HS256", "JWT", "HmacSHA256", token)).andExpect(status().isOk());
+		me(signeraForHand("HS256", "at+jwt", "HmacSHA256", token)).andExpect(problem401());
+	}
+
+	@Test
 	void tokenUtanSignaturGer401() throws Exception {
 		String payload = login("admin").split("\\.")[1];
 
@@ -262,7 +270,14 @@ class JwtAuthenticationIntegrationTest {
 
 	/** Samma innehåll som {@code token}, signerat med appens nyckel och den angivna algoritmen. */
 	private String signeraForHand(String alg, String macAlgoritm, String token) throws Exception {
-		String osignerad = base64Url("{\"alg\":\"%s\"}".formatted(alg)) + "." + token.split("\\.")[1];
+		return signeraForHand(alg, null, macAlgoritm, token);
+	}
+
+	/** Som ovan, med {@code typ} i huvudet om den inte är null. */
+	private String signeraForHand(String alg, String typ, String macAlgoritm, String token) throws Exception {
+		String huvud = (typ == null) ? "{\"alg\":\"%s\"}".formatted(alg)
+				: "{\"alg\":\"%s\",\"typ\":\"%s\"}".formatted(alg, typ);
+		String osignerad = base64Url(huvud) + "." + token.split("\\.")[1];
 		Mac mac = Mac.getInstance(macAlgoritm);
 		mac.init(new SecretKeySpec(jwtProperties.key().getEncoded(), macAlgoritm));
 		byte[] signatur = mac.doFinal(osignerad.getBytes(UTF_8));

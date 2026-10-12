@@ -28,6 +28,11 @@ Systemet består av fyra delar:
 Backend är stateless (JWT i HttpOnly-cookie). Det publika API:et kräver ingen inloggning och
 är skrivskyddat; allt som ändrar data kräver inloggning.
 
+Anrop till admin-API:et som ändrar data kräver också en CSRF-token, även inloggningen. Klienten
+läser token ur cookien `__Host-XSRF-TOKEN` och skickar den i huvudet `X-XSRF-TOKEN`. Admin-appen
+börjar varje sidladdning med `GET /auth/me`, som sätter CSRF-cookien om den saknas, även när
+svaret är 401. Inloggningen byter token.
+
 ```
 Besökare ──> <domän>.se (Next.js/Astro) ──> /api/v1/public/* (skrivskyddat, cachat)
                                                    │

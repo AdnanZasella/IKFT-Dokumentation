@@ -45,9 +45,16 @@ class AccountJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthen
 		}
 	}
 
-	/** {@code -1}, som aldrig matchar ett konto, om claimet saknas eller inte är ett heltal. */
+	/**
+	 * {@code -1}, som aldrig matchar ett konto, om claimet saknas eller inte är ett heltal. Ett decimaltal
+	 * som {@code 0.5} avrundas alltså inte till {@code 0}.
+	 */
 	private static long tokenVersion(Jwt jwt) {
-		return (jwt.getClaim(AccessTokens.TOKEN_VERSION_CLAIM) instanceof Number number) ? number.longValue() : -1;
+		return switch (jwt.getClaim(AccessTokens.TOKEN_VERSION_CLAIM)) {
+			case Long version -> version;
+			case Integer version -> version;
+			case null, default -> -1;
+		};
 	}
 
 }

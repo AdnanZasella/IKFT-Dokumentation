@@ -16,6 +16,9 @@ import jakarta.persistence.Table;
 @Table(name = "user_account")
 public class UserAccount {
 
+	/** Samma gräns som kolumnen {@code user_account.username}. */
+	public static final int MAX_USERNAME_LENGTH = 50;
+
 	@Id
 	private UUID id;
 

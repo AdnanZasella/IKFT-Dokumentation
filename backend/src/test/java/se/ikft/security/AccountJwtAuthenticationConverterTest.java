@@ -55,6 +55,18 @@ class AccountJwtAuthenticationConverterTest {
 	}
 
 	@Test
+	void tokenversionSomInteArEttHeltalAvvisas() {
+		UUID id = UUID.randomUUID();
+		konto(id, Role.ADMIN, 0);
+
+		// 0.5 får inte avrundas till 0.
+		for (Object version : new Object[] { 0.5, 0.0, "0" }) {
+			assertThatThrownBy(() -> converter.convert(jwt(id.toString(), version)))
+				.isInstanceOf(InvalidBearerTokenException.class);
+		}
+	}
+
+	@Test
 	void subjectSomInteArEttIdAvvisas() {
 		assertThatThrownBy(() -> converter.convert(jwt("admin", 0))).isInstanceOf(InvalidBearerTokenException.class);
 	}
@@ -76,11 +88,15 @@ class AccountJwtAuthenticationConverterTest {
 	}
 
 	private static Jwt jwt(String subject, int tokenVersion) {
+		return jwt(subject, (Object) (long) tokenVersion);
+	}
+
+	private static Jwt jwt(String subject, Object tokenVersion) {
 		Instant nu = Instant.parse("2026-10-12T10:00:00Z");
 		return Jwt.withTokenValue("token")
 			.header("alg", "HS256")
 			.subject(subject)
-			.claim(AccessTokens.TOKEN_VERSION_CLAIM, (long) tokenVersion)
+			.claim(AccessTokens.TOKEN_VERSION_CLAIM, tokenVersion)
 			.issuedAt(nu)
 			.expiresAt(nu.plusSeconds(60))
 			.build();
