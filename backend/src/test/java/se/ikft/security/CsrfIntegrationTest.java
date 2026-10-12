@@ -130,6 +130,26 @@ class CsrfIntegrationTest {
 				""".formatted(LOSENORD))).andExpect(status().isBadRequest());
 	}
 
+	@Test
+	void inloggningSomInteArJsonKraverCsrfToken() throws Exception {
+		// Ett formulär från en annan webbplats kan skickas utan CORS och ska inte kunna logga in besökaren.
+		for (MediaType typ : new MediaType[] { MediaType.APPLICATION_FORM_URLENCODED, MediaType.TEXT_PLAIN }) {
+			mockMvc.perform(post("/api/v1/auth/login").contentType(typ).content("""
+					{"username": "admin", "password": "%s"}
+					""".formatted(LOSENORD))).andExpect(status().isForbidden());
+		}
+		mockMvc.perform(post("/api/v1/auth/set-password").contentType(MediaType.TEXT_PLAIN).content("""
+				{"username": "admin", "code": "0000-0000-0000", "newPassword": "%s"}
+				""".formatted(LOSENORD))).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void inloggningMedJsonOchTeckenkodningKraverIngenCsrfToken() throws Exception {
+		mockMvc.perform(post("/api/v1/auth/login").contentType("application/json;charset=UTF-8").content("""
+				{"username": "admin", "password": "%s"}
+				""".formatted(LOSENORD))).andExpect(status().isOk());
+	}
+
 	private MockHttpServletResponse login() throws Exception {
 		// Ingen CSRF-token skickas med.
 		return mockMvc

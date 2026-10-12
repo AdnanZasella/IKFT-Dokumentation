@@ -1,12 +1,15 @@
 package se.ikft.security;
 
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -22,6 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationEntryPointFailureHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -54,11 +58,27 @@ public class SecurityConfig {
 	 * Anropen i admin-appen som görs utan att vara inloggad. De kräver ingen CSRF-token, och
 	 * inloggningscookien läses inte, så att en utgången cookie inte stoppar dem. De ligger kvar i
 	 * huvudkedjan, så att klienten får CSRF-cookien redan vid inloggningen.
+	 * <p>
+	 * Undantaget gäller bara JSON. En annan webbplats kan inte skicka JSON utan att webbläsaren först
+	 * frågar om lov (CORS), och kan därför inte logga in besökaren på ett annat konto. Formulär och
+	 * {@code text/plain} kan skickas utan att fråga och kräver därför CSRF-token.
 	 */
-	static final RequestMatcher WITHOUT_LOGIN = new OrRequestMatcher(
+	static final RequestMatcher WITHOUT_LOGIN = new AndRequestMatcher(new OrRequestMatcher(
 			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/login"),
 			// Skyddas av engångskoden i stället för inloggning.
-			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/set-password"));
+			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/set-password")),
+			SecurityConfig::isJson);
+
+	private static boolean isJson(HttpServletRequest request) {
+		String contentType = request.getContentType();
+		try {
+			return contentType != null
+					&& MediaType.APPLICATION_JSON.equalsTypeAndSubtype(MediaType.parseMediaType(contentType));
+		}
+		catch (InvalidMediaTypeException ex) {
+			return false;
+		}
+	}
 
 	@Bean
 	@Order(1)
