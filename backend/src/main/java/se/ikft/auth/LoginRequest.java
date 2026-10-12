@@ -1,11 +1,10 @@
 package se.ikft.auth;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
 
 /**
- * Gränserna avvisar stora värden innan de bearbetas. Lösenordets längd kontrolleras inte mot
- * lösenordsreglerna här, eftersom ett för långt lösenord ska ge samma svar som ett fel lösenord.
+ * Fälten valideras bara för att finnas. Ett tomt eller för långt användarnamn eller lösenord ska ge samma
+ * svar som ett fel lösenord, så de kontrolleras i {@link LoginService}.
  */
-record LoginRequest(@NotBlank @Size(max = 50) String username, @NotBlank @Size(max = 256) String password) {
+record LoginRequest(@NotNull String username, @NotNull String password) {
 }

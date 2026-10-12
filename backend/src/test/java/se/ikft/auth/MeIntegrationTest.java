@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static se.ikft.security.TestCsrf.csrfToken;
 
 import jakarta.servlet.http.Cookie;
 
@@ -84,7 +85,7 @@ class MeIntegrationTest {
 
 	private ResultActions me(String username) throws Exception {
 		Cookie cookie = mockMvc
-			.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("""
+			.perform(post("/api/v1/auth/login").with(csrfToken()).contentType(MediaType.APPLICATION_JSON).content("""
 					{"username": "%s", "password": "%s"}
 					""".formatted(username, LOSENORD)))
 			.andExpect(status().isOk())

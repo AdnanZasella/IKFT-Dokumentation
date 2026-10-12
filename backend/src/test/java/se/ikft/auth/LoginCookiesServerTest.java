@@ -57,24 +57,34 @@ class LoginCookiesServerTest {
 	}
 
 	@Test
-	void inloggningenSatterBadeInloggningsOchCsrfCookie() throws Exception {
-		HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/login"))
+	void forstaAnropetSatterCsrfCookieOchInloggningenSatterInloggningscookie() throws Exception {
+		HttpClient client = HttpClient.newHttpClient();
+		// Klientens första anrop, innan den är inloggad. Svaret är 401 men sätter CSRF-cookien.
+		HttpResponse<String> forsta = client.send(HttpRequest.newBuilder(url("/api/v1/auth/me")).build(),
+				HttpResponse.BodyHandlers.ofString());
+
+		assertThat(forsta.statusCode()).isEqualTo(401);
+		List<String> csrf = cookie(forsta.headers().allValues("Set-Cookie"), SecurityConfig.CSRF_COOKIE_NAME);
+		assertThat(csrf).contains("Secure", "SameSite=Strict", "Path=/").doesNotContain("HttpOnly");
+
+		String csrfCookie = csrf.getFirst();
+		HttpRequest login = HttpRequest.newBuilder(url("/api/v1/auth/login"))
 			.header("Content-Type", "application/json")
+			.header("Cookie", csrfCookie)
+			.header("X-XSRF-TOKEN", csrfCookie.substring(csrfCookie.indexOf('=') + 1))
 			.POST(HttpRequest.BodyPublishers.ofString("""
 					{"username": "admin", "password": "%s"}
 					""".formatted(LOSENORD)))
 			.build();
-
-		HttpResponse<String> response = HttpClient.newHttpClient()
-			.send(request, HttpResponse.BodyHandlers.ofString());
+		HttpResponse<String> response = client.send(login, HttpResponse.BodyHandlers.ofString());
 
 		assertThat(response.statusCode()).isEqualTo(200);
-		List<String> cookies = response.headers().allValues("Set-Cookie");
-		assertThat(cookies).hasSize(2);
-		assertThat(cookie(cookies, AccessTokens.COOKIE_NAME)).contains("HttpOnly", "Secure", "SameSite=Strict",
-				"Path=/");
-		assertThat(cookie(cookies, SecurityConfig.CSRF_COOKIE_NAME)).contains("Secure", "SameSite=Strict", "Path=/")
-			.doesNotContain("HttpOnly");
+		assertThat(cookie(response.headers().allValues("Set-Cookie"), AccessTokens.COOKIE_NAME)).contains("HttpOnly",
+				"Secure", "SameSite=Strict", "Path=/");
+	}
+
+	private URI url(String path) {
+		return URI.create("http://localhost:" + port + path);
 	}
 
 	private static List<String> cookie(List<String> cookies, String name) {

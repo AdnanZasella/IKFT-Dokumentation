@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static se.ikft.security.TestCsrf.csrfToken;
 
 import java.text.Normalizer;
 import java.time.Duration;
@@ -95,14 +96,15 @@ class LoginIntegrationTest {
 	}
 
 	@Test
-	void tokenInnehallerKontoIdRollOchTokenversion() throws Exception {
+	void tokenInnehallerKontoIdOchTokenversionMenIngenRoll() throws Exception {
 		jdbc.sql("UPDATE user_account SET token_version = 3 WHERE username = 'admin'").update();
 
 		Jwt jwt = jwtDecoder.decode(token(login("admin", LOSENORD).andExpect(status().isOk())));
 
 		assertThat(jwt.getSubject())
 			.isEqualTo(accounts.findByUsername("admin").orElseThrow().getId().toString());
-		assertThat(jwt.getClaimAsString("role")).isEqualTo("ADMIN");
+		// Rollen läses från databasen vid varje anrop, så den ska inte finnas i token.
+		assertThat(jwt.hasClaim("role")).isFalse();
 		assertThat(((Number) jwt.getClaim("token_version")).intValue()).isEqualTo(3);
 		assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt())).isEqualTo(Duration.ofMinutes(15));
 	}
@@ -171,8 +173,25 @@ class LoginIntegrationTest {
 	}
 
 	@Test
-	void tommaFaltGer400() throws Exception {
-		login("", "").andExpect(status().isBadRequest())
+	void tommaOchForLangaFaltGerSammaSvarSomFelLosenord() throws Exception {
+		assertThat(felsvar("", LOSENORD)).isEqualTo(felLosenordSvar);
+		assertThat(felsvar("   ", LOSENORD)).isEqualTo(felLosenordSvar);
+		assertThat(felsvar("d".repeat(51), LOSENORD)).isEqualTo(felLosenordSvar);
+		assertThat(felsvar("dokumenterare", "")).isEqualTo(felLosenordSvar);
+		assertThat(felsvar("dokumenterare", "x".repeat(257))).isEqualTo(felLosenordSvar);
+	}
+
+	@Test
+	void losenordMedBaraMellanslagKanAnvandas() throws Exception {
+		sattLosenord("dokumenterare", " ".repeat(12));
+
+		login("dokumenterare", " ".repeat(12)).andExpect(status().isOk());
+	}
+
+	@Test
+	void saknadeFaltGer400() throws Exception {
+		mockMvc.perform(post("/api/v1/auth/login").with(csrfToken()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+			.andExpect(status().isBadRequest())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 			.andExpect(jsonPath("$.errors.length()").value(2));
 	}
@@ -203,7 +222,7 @@ class LoginIntegrationTest {
 		String body = """
 				{"username": "%s", "password": "%s"}
 				""".formatted(username.replace("\n", "\\n"), password);
-		return mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body));
+		return mockMvc.perform(post("/api/v1/auth/login").with(csrfToken()).contentType(MediaType.APPLICATION_JSON).content(body));
 	}
 
 	private String felsvar(String username, String password) throws Exception {

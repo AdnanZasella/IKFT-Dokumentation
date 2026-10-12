@@ -2,6 +2,7 @@ package se.ikft.security;
 
 import java.time.Duration;
 import java.util.Base64;
+import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -31,6 +32,8 @@ public record JwtProperties(@NotBlank String secret,
 	/** HS256 kräver en nyckel på minst 256 bitar. */
 	static final int MIN_KEY_BYTES = 32;
 
+	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+
 	public JwtProperties {
 		if (secret != null && !secret.isBlank()) {
 			decode(secret);
@@ -50,7 +53,8 @@ public record JwtProperties(@NotBlank String secret,
 	private static byte[] decode(String secret) {
 		byte[] bytes;
 		try {
-			bytes = Base64.getDecoder().decode(secret.strip());
+			// Utan blanktecken, eftersom t.ex. openssl bryter raden efter 64 tecken.
+			bytes = Base64.getDecoder().decode(WHITESPACE.matcher(secret).replaceAll(""));
 		}
 		catch (IllegalArgumentException ex) {
 			throw new IllegalArgumentException("ikft.security.jwt.secret måste vara base64.", ex);

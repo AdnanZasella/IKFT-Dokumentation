@@ -25,8 +25,6 @@ public class AccessTokens {
 	/** Med prefixet {@code __Host-} kan cookien bara sättas av värden själv, inte av en annan subdomän. */
 	public static final String COOKIE_NAME = "__Host-ikft_access";
 
-	static final String ROLE_CLAIM = "role";
-
 	static final String TOKEN_VERSION_CLAIM = "token_version";
 
 	private final JwtEncoder encoder;
@@ -43,13 +41,13 @@ public class AccessTokens {
 
 	/**
 	 * En cookie med en ny token för kontot. Cookien saknar {@code Domain}, så den gäller bara värden den
-	 * sattes från (admin-subdomänen) och skickas aldrig till den publika hemsidan.
+	 * sattes från (admin-subdomänen) och skickas aldrig till den publika hemsidan. Token saknar roll,
+	 * eftersom rollen läses från databasen vid varje anrop.
 	 */
 	public ResponseCookie issue(UserAccount account) {
 		Instant now = clock.instant();
 		JwtClaimsSet claims = JwtClaimsSet.builder()
 			.subject(account.getId().toString())
-			.claim(ROLE_CLAIM, account.getRole().name())
 			.claim(TOKEN_VERSION_CLAIM, account.getTokenVersion())
 			.issuedAt(now)
 			.expiresAt(now.plus(properties.validity()))

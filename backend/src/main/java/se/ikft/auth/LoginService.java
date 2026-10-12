@@ -29,6 +29,12 @@ class LoginService {
 	 */
 	static final String INVALID_CREDENTIALS = "Fel användarnamn eller lösenord.";
 
+	/** Samma gräns som kolumnen {@code user_account.username}. */
+	private static final int MAX_USERNAME_LENGTH = 50;
+
+	/** Jämförs i stället för ett lösenord som inte kan vara rätt, så att BCrypt ändå körs. */
+	private static final String UNUSABLE_PASSWORD = "inget-konto-har-det-har-losenordet";
+
 	private static final Logger log = LoggerFactory.getLogger(LoginService.class);
 
 	private final UserAccountRepository accounts;
@@ -51,7 +57,7 @@ class LoginService {
 		this.passwordEncoder = passwordEncoder;
 		this.accessTokens = accessTokens;
 		this.accountInfo = accountInfo;
-		this.dummyHash = passwordEncoder.encode("inget-konto-har-det-har-losenordet");
+		this.dummyHash = passwordEncoder.encode(UNUSABLE_PASSWORD);
 	}
 
 	/** Ett lyckat försök: cookien med token och kontot som det visas för klienten. */
@@ -63,21 +69,34 @@ class LoginService {
 	 * läses i en egen kort transaktion.
 	 */
 	public LoginResult login(String username, String password) {
-		Optional<UserAccount> found = accounts.findByUsername(username);
+		// Inget konto har ett tomt eller för långt användarnamn, så då behövs ingen sökning.
+		Optional<UserAccount> found = (username.isBlank() || username.length() > MAX_USERNAME_LENGTH)
+				? Optional.empty() : accounts.findByUsername(username);
 		Optional<UserAccount> withPassword = found.filter(UserAccount::hasPassword);
-		String normalized = Passwords.normalize(password);
-		// BCrypt använder bara de första 72 byten, så ett längre lösenord kan aldrig vara rätt.
-		boolean tooLong = normalized.getBytes(UTF_8).length > Passwords.BCRYPT_MAX_BYTES;
-		// Jämförelsen görs alltid, även när svaret redan är givet, så att svarstiden blir densamma.
-		boolean matches = passwordEncoder.matches(tooLong ? "" : normalized,
+		boolean usable = isUsable(password);
+		// Jämförelsen görs alltid, även när svaret redan är givet, så att svarstiden blir densamma. Ett
+		// tomt lösenord jämförs inte alls av PasswordEncoder, därför jämförs ersättningen i stället.
+		boolean matches = passwordEncoder.matches(usable ? Passwords.normalize(password) : UNUSABLE_PASSWORD,
 				withPassword.map(UserAccount::getPasswordHash).orElse(dummyHash));
-		if (tooLong || !matches || withPassword.isEmpty()) {
+		if (!usable || !matches || withPassword.isEmpty()) {
 			logFailure(found);
 			throw new BadCredentialsException(INVALID_CREDENTIALS);
 		}
 		UserAccount account = withPassword.get();
 		log.info("Inloggning lyckades för {}.", account.getUsername());
 		return new LoginResult(accessTokens.issue(account), accountInfo.get(account));
+	}
+
+	/**
+	 * Om lösenordet kan vara rätt. Ett tomt lösenord kan aldrig ha satts, och BCrypt använder bara de
+	 * första 72 byten, så ett längre lösenord kan aldrig vara rätt. Mycket långa lösenord normaliseras
+	 * inte alls.
+	 */
+	private static boolean isUsable(String password) {
+		if (password.isEmpty() || password.length() > Passwords.MAX_RAW_LENGTH) {
+			return false;
+		}
+		return Passwords.normalize(password).getBytes(UTF_8).length <= Passwords.BCRYPT_MAX_BYTES;
 	}
 
 	/**

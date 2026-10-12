@@ -35,6 +35,17 @@ class JwtPropertiesTest {
 	}
 
 	@Test
+	void nyckelMedRadbrytningarGodtas() {
+		// Som från openssl rand -base64 64, som bryter raden efter 64 tecken.
+		byte[] bytes = new byte[64];
+		bytes[63] = 1;
+		String radbruten = Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(bytes);
+		assertThat(radbruten).contains("\n");
+
+		assertThat(new JwtProperties(radbruten, Duration.ofMinutes(15)).key().getEncoded()).isEqualTo(bytes);
+	}
+
+	@Test
 	void nyckelSomSaknasStopparUppstarten() {
 		runner.run(context -> assertThat(context).hasFailed());
 	}

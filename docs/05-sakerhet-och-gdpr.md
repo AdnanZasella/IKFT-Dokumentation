@@ -7,7 +7,7 @@ Del av [projektspecifikationen](00-oversikt.md).
 **Autentisering och sessioner**
 - Lösenord lagras hashat (t.ex. BCrypt), aldrig i klartext.
 - JWT i en **HttpOnly, Secure cookie** med `SameSite=Strict`, satt endast för admin-subdomänen.
-  Muterande anrop skyddas med CSRF-token.
+  Muterande anrop skyddas med CSRF-token, även inloggning och `set-password`.
 - Rimlig giltighetstid och förnyelse (refresh) så att användare inte behöver logga in orimligt
   ofta på mobilen.
 - **Innehavarbyte ogiltigförklarar sessioner** via tokenversion och kräver att lösenordet byts

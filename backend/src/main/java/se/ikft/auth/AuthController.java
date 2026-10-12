@@ -44,7 +44,7 @@ class AuthController {
 	@PostMapping("/login")
 	AccountInfo login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
 		LoginResult result = loginService.login(request.username(), request.password());
-		// addHeader och inte ResponseEntity.header, som skriver över CSRF-cookien från säkerhetskedjan i
+		// addHeader och inte ResponseEntity.header, som skriver över cookies som säkerhetskedjan har satt i
 		// stället för att lägga till en cookie.
 		response.addHeader(HttpHeaders.SET_COOKIE, result.cookie().toString());
 		return result.account();

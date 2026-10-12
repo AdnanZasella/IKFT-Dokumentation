@@ -23,11 +23,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import se.ikft.TestcontainersConfiguration;
 
 /**
- * CSRF-skyddet: anrop som ändrar data kräver token, utom inloggning och set-password.
+ * CSRF-skyddet: anrop som ändrar data kräver token, även inloggning och set-password.
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -57,9 +59,11 @@ class CsrfIntegrationTest {
 	void forbered() throws Exception {
 		aterstall();
 		jdbc.sql("UPDATE user_account SET password_hash = ?").param(passwordEncoder.encode(LOSENORD)).update();
-		MockHttpServletResponse svar = login();
-		inloggning = svar.getCookie(AccessTokens.COOKIE_NAME);
-		csrf = svar.getCookie(CSRF_COOKIE);
+		csrf = forstaAnropet().getCookie(CSRF_COOKIE);
+		inloggning = login(csrf).andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getCookie(AccessTokens.COOKIE_NAME);
 	}
 
 	@AfterEach
@@ -68,14 +72,9 @@ class CsrfIntegrationTest {
 	}
 
 	@Test
-	void inloggningenSatterCsrfCookieSomKlientenKanLasa() throws Exception {
-		MockHttpServletResponse svar = login();
-		// Båda cookies ska finnas kvar, inte bara den som sattes sist.
-		assertThat(svar.getHeaders(HttpHeaders.SET_COOKIE)).anyMatch(c -> c.startsWith(CSRF_COOKIE + "="))
-			.anyMatch(c -> c.startsWith(AccessTokens.COOKIE_NAME + "="));
-
+	void forstaAnropetSatterCsrfCookieSomKlientenKanLasa() throws Exception {
 		// Cookien läggs till som Cookie-objekt, och MockHttpServletResponse skriver inte SameSite i huvudet.
-		Cookie cookie = svar.getCookie(CSRF_COOKIE);
+		Cookie cookie = forstaAnropet().getCookie(CSRF_COOKIE);
 		assertThat(cookie.isHttpOnly()).isFalse();
 		assertThat(cookie.getSecure()).isTrue();
 		assertThat(cookie.getPath()).isEqualTo("/");
@@ -123,42 +122,45 @@ class CsrfIntegrationTest {
 	}
 
 	@Test
-	void setPasswordKraverIngenCsrfToken() throws Exception {
-		// Fel kod ger 400, inte 403, alltså godkändes anropet av CSRF-kontrollen.
-		mockMvc.perform(post("/api/v1/auth/set-password").contentType(MediaType.APPLICATION_JSON).content("""
-				{"username": "admin", "code": "0000-0000-0000", "newPassword": "%s"}
-				""".formatted(LOSENORD))).andExpect(status().isBadRequest());
-	}
-
-	@Test
-	void inloggningSomInteArJsonKraverCsrfToken() throws Exception {
-		// Ett formulär från en annan webbplats kan skickas utan CORS och ska inte kunna logga in besökaren.
-		for (MediaType typ : new MediaType[] { MediaType.APPLICATION_FORM_URLENCODED, MediaType.TEXT_PLAIN }) {
-			mockMvc.perform(post("/api/v1/auth/login").contentType(typ).content("""
-					{"username": "admin", "password": "%s"}
-					""".formatted(LOSENORD))).andExpect(status().isForbidden());
-		}
-		mockMvc.perform(post("/api/v1/auth/set-password").contentType(MediaType.TEXT_PLAIN).content("""
-				{"username": "admin", "code": "0000-0000-0000", "newPassword": "%s"}
+	void inloggningUtanCsrfTokenGer403() throws Exception {
+		// Annars kan en annan webbplats logga in besökaren på ett annat konto.
+		login(null).andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/v1/auth/login").cookie(csrf).contentType(MediaType.APPLICATION_JSON).content("""
+				{"username": "admin", "password": "%s"}
 				""".formatted(LOSENORD))).andExpect(status().isForbidden());
 	}
 
 	@Test
-	void inloggningMedJsonOchTeckenkodningKraverIngenCsrfToken() throws Exception {
-		mockMvc.perform(post("/api/v1/auth/login").contentType("application/json;charset=UTF-8").content("""
-				{"username": "admin", "password": "%s"}
-				""".formatted(LOSENORD))).andExpect(status().isOk());
+	void setPasswordKraverCsrfToken() throws Exception {
+		String body = """
+				{"username": "admin", "code": "0000-0000-0000", "newPassword": "%s"}
+				""".formatted(LOSENORD);
+		mockMvc.perform(post("/api/v1/auth/set-password").contentType(MediaType.APPLICATION_JSON).content(body))
+			.andExpect(status().isForbidden());
+		// Fel kod ger 400, inte 403, alltså godkändes anropet av CSRF-kontrollen.
+		mockMvc
+			.perform(post("/api/v1/auth/set-password").cookie(csrf)
+				.header(CSRF_HEADER, csrf.getValue())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isBadRequest());
 	}
 
-	private MockHttpServletResponse login() throws Exception {
-		// Ingen CSRF-token skickas med.
-		return mockMvc
-			.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("""
+	/** Klientens första anrop, innan den är inloggad. Svaret är 401 men sätter CSRF-cookien. */
+	private MockHttpServletResponse forstaAnropet() throws Exception {
+		return mockMvc.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized()).andReturn().getResponse();
+	}
+
+	/** Inloggning med CSRF-cookien och token i huvudet, som klienten gör. Utan token om {@code csrf} är null. */
+	private ResultActions login(Cookie csrf) throws Exception {
+		MockHttpServletRequestBuilder request = post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+			.content("""
 					{"username": "admin", "password": "%s"}
-					""".formatted(LOSENORD)))
-			.andExpect(status().isOk())
-			.andReturn()
-			.getResponse();
+					""".formatted(LOSENORD));
+		if (csrf != null) {
+			request.cookie(csrf).header(CSRF_HEADER, csrf.getValue());
+		}
+		return mockMvc.perform(request);
 	}
 
 }

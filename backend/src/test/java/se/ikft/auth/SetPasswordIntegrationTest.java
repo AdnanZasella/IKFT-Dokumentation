@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static se.ikft.security.TestCsrf.csrfToken;
 
 import java.security.MessageDigest;
 import java.text.Normalizer;
@@ -265,7 +266,7 @@ class SetPasswordIntegrationTest {
 				{"username": "%s", "code": "%s", "newPassword": "%s"}
 				""".formatted(username, code, newPassword);
 		return mockMvc
-			.perform(post("/api/v1/auth/set-password").contentType(MediaType.APPLICATION_JSON).content(body));
+			.perform(post("/api/v1/auth/set-password").with(csrfToken()).contentType(MediaType.APPLICATION_JSON).content(body));
 	}
 
 	private String felsvar(String username, String code) throws Exception {

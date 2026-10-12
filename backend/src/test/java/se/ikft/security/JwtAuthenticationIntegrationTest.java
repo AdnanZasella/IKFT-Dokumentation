@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static se.ikft.security.TestCsrf.csrfToken;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -135,7 +136,9 @@ class JwtAuthenticationIntegrationTest {
 	@Test
 	void manipuleradTokenGer401() throws Exception {
 		String[] delar = login("dokumenterare").split("\\.");
-		String payload = new String(Base64.getUrlDecoder().decode(delar[1]), UTF_8).replace("DOCUMENTER", "ADMIN");
+		// Byter kontot i token från Dokumenterare till Admin.
+		String payload = new String(Base64.getUrlDecoder().decode(delar[1]), UTF_8)
+			.replace(kontoId("dokumenterare"), kontoId("admin"));
 		String manipulerad = delar[0] + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(UTF_8))
 				+ "." + delar[2];
 
@@ -211,7 +214,7 @@ class JwtAuthenticationIntegrationTest {
 	@Test
 	void ogiltigCookieHindrarInteInloggningen() throws Exception {
 		mockMvc
-			.perform(post("/api/v1/auth/login").cookie(new Cookie(AccessTokens.COOKIE_NAME, "inte.en.token"))
+			.perform(post("/api/v1/auth/login").with(csrfToken()).cookie(new Cookie(AccessTokens.COOKIE_NAME, "inte.en.token"))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"username": "admin", "password": "%s"}
@@ -221,7 +224,7 @@ class JwtAuthenticationIntegrationTest {
 
 	private String login(String username) throws Exception {
 		return mockMvc
-			.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("""
+			.perform(post("/api/v1/auth/login").with(csrfToken()).contentType(MediaType.APPLICATION_JSON).content("""
 					{"username": "%s", "password": "%s"}
 					""".formatted(username, LOSENORD)))
 			.andExpect(status().isOk())
@@ -245,7 +248,6 @@ class JwtAuthenticationIntegrationTest {
 		var konto = accounts.findByUsername(username).orElseThrow();
 		JwtClaimsSet.Builder builder = JwtClaimsSet.builder()
 			.subject(konto.getId().toString())
-			.claim(AccessTokens.ROLE_CLAIM, konto.getRole().name())
 			.claim(AccessTokens.TOKEN_VERSION_CLAIM, tokenVersion)
 			.issuedAt(issuedAt)
 			.expiresAt(expiresAt);
@@ -265,6 +267,10 @@ class JwtAuthenticationIntegrationTest {
 		mac.init(new SecretKeySpec(jwtProperties.key().getEncoded(), macAlgoritm));
 		byte[] signatur = mac.doFinal(osignerad.getBytes(UTF_8));
 		return osignerad + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(signatur);
+	}
+
+	private String kontoId(String username) {
+		return accounts.findByUsername(username).orElseThrow().getId().toString();
 	}
 
 	private static String base64Url(String text) {
