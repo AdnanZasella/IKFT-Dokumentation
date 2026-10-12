@@ -19,7 +19,7 @@ final class Passwords {
 	 * Gräns före normaliseringen, så att stora strängar avvisas utan att bearbetas. Ligger långt över
 	 * vad som kan bli 72 byte efter normaliseringen.
 	 */
-	static final int MAX_RAW_LENGTH = 256;
+	private static final int MAX_RAW_LENGTH = 256;
 
 	static final String TOO_LONG = "Lösenordet är för långt. Det får vara högst 72 byte, där till exempel å, ä och ö räknas som två.";
 

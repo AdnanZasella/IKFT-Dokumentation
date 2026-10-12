@@ -1,5 +1,6 @@
 package se.ikft.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import se.ikft.auth.LoginService.LoginResult;
+import se.ikft.security.CsrfTokens;
 import se.ikft.security.CurrentAccount;
 
 @RestController
@@ -28,10 +30,14 @@ class AuthController {
 
 	private final AccountInfoService accountInfo;
 
-	AuthController(SetupCodeService setupCodes, LoginService loginService, AccountInfoService accountInfo) {
+	private final CsrfTokens csrfTokens;
+
+	AuthController(SetupCodeService setupCodes, LoginService loginService, AccountInfoService accountInfo,
+			CsrfTokens csrfTokens) {
 		this.setupCodes = setupCodes;
 		this.loginService = loginService;
 		this.accountInfo = accountInfo;
+		this.csrfTokens = csrfTokens;
 	}
 
 	/** Det inloggade kontot. */
@@ -40,13 +46,18 @@ class AuthController {
 		return accountInfo.get(CurrentAccount.id(authentication), CurrentAccount.role(authentication));
 	}
 
-	/** Sätter inloggningscookien och svarar med kontot, så att klienten inte behöver fråga efter det. */
+	/**
+	 * Sätter inloggningscookien och en ny CSRF-cookie, och svarar med kontot, så att klienten inte behöver
+	 * fråga efter det.
+	 */
 	@PostMapping("/login")
-	AccountInfo login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+	AccountInfo login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest,
+			HttpServletResponse response) {
 		LoginResult result = loginService.login(request.username(), request.password());
-		// addHeader och inte ResponseEntity.header, som skriver över cookies som säkerhetskedjan har satt i
-		// stället för att lägga till en cookie.
+		// addHeader och inte ResponseEntity.header, som skriver över den nya CSRF-cookien i stället för att
+		// lägga till en cookie.
 		response.addHeader(HttpHeaders.SET_COOKIE, result.cookie().toString());
+		csrfTokens.renew(httpRequest, response);
 		return result.account();
 	}
 

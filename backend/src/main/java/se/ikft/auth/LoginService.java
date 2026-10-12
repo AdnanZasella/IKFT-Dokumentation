@@ -1,7 +1,5 @@
 package se.ikft.auth;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -69,11 +67,11 @@ class LoginService {
 	 * läses i en egen kort transaktion.
 	 */
 	public LoginResult login(String username, String password) {
-		// Inget konto har ett tomt eller för långt användarnamn, så då behövs ingen sökning.
-		Optional<UserAccount> found = (username.isBlank() || username.length() > MAX_USERNAME_LENGTH)
-				? Optional.empty() : accounts.findByUsername(username);
+		Optional<UserAccount> found = isPossibleUsername(username) ? accounts.findByUsername(username)
+				: Optional.empty();
 		Optional<UserAccount> withPassword = found.filter(UserAccount::hasPassword);
-		boolean usable = isUsable(password);
+		// Samma regler som när lösenordet sattes. Ett lösenord som bryter mot dem kan aldrig vara rätt.
+		boolean usable = Passwords.problem(password, 1).isEmpty();
 		// Jämförelsen görs alltid, även när svaret redan är givet, så att svarstiden blir densamma. Ett
 		// tomt lösenord jämförs inte alls av PasswordEncoder, därför jämförs ersättningen i stället.
 		boolean matches = passwordEncoder.matches(usable ? Passwords.normalize(password) : UNUSABLE_PASSWORD,
@@ -88,15 +86,12 @@ class LoginService {
 	}
 
 	/**
-	 * Om lösenordet kan vara rätt. Ett tomt lösenord kan aldrig ha satts, och BCrypt använder bara de
-	 * första 72 byten, så ett längre lösenord kan aldrig vara rätt. Mycket långa lösenord normaliseras
-	 * inte alls.
+	 * Om något konto kan ha användarnamnet. Annars görs ingen sökning, så att t.ex. NUL, som databasen
+	 * avvisar, ger samma svar som ett okänt användarnamn.
 	 */
-	private static boolean isUsable(String password) {
-		if (password.isEmpty() || password.length() > Passwords.MAX_RAW_LENGTH) {
-			return false;
-		}
-		return Passwords.normalize(password).getBytes(UTF_8).length <= Passwords.BCRYPT_MAX_BYTES;
+	private static boolean isPossibleUsername(String username) {
+		return !username.isBlank() && username.length() <= MAX_USERNAME_LENGTH
+				&& username.chars().noneMatch(Character::isISOControl);
 	}
 
 	/**

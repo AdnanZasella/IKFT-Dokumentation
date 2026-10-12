@@ -11,6 +11,7 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +22,7 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationEntryPointFailureHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -72,7 +74,11 @@ public class SecurityConfig {
 			.formLogin(AbstractHttpConfigurer::disable)
 			.logout(AbstractHttpConfigurer::disable)
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			// Varje endpoint bestämmer själv hur länge svaret får cachas.
+			.headers(headers -> headers.cacheControl(HeadersConfigurer.CacheControlConfig::disable))
 			.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+			// Behövs trots permitAll: metodskydd (@PreAuthorize) på en publik endpoint ger annars 403 i
+			// stället för 401 för den som inte är inloggad.
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint(problemHandler)
 				.accessDeniedHandler(problemHandler));
@@ -83,12 +89,12 @@ public class SecurityConfig {
 	@Order(2)
 	@ConditionalOnWebApplication
 	SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder,
-			UserAccountRepository accounts) throws Exception {
+			UserAccountRepository accounts, CsrfTokenRepository csrfTokenRepository) throws Exception {
 		ProblemDetailSecurityHandler problemHandler = new ProblemDetailSecurityHandler();
 		http
 			// Inloggningen ligger i en cookie, så anrop som ändrar data kräver en CSRF-token. Klienten läser
 			// den ur CSRF-cookien och skickar den i X-XSRF-TOKEN.
-			.csrf(csrf -> csrf.spa().csrfTokenRepository(csrfTokenRepository()))
+			.csrf(csrf -> csrf.spa().csrfTokenRepository(csrfTokenRepository))
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.formLogin(AbstractHttpConfigurer::disable)
 			.logout(AbstractHttpConfigurer::disable)
@@ -125,8 +131,13 @@ public class SecurityConfig {
 		return filter;
 	}
 
-	/** Läsbar för klientens JavaScript, men bara över HTTPS och bara från samma webbplats. */
-	private static CookieCsrfTokenRepository csrfTokenRepository() {
+	/**
+	 * Läsbar för klientens JavaScript, men bara över HTTPS och bara från samma webbplats. En bean, så att
+	 * inloggningen kan byta token, se {@link CsrfTokens}.
+	 */
+	@Bean
+	@ConditionalOnWebApplication
+	CookieCsrfTokenRepository csrfTokenRepository() {
 		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 		repository.setCookieName(CSRF_COOKIE_NAME);
 		repository.setCookieCustomizer(cookie -> cookie.secure(true).sameSite("Strict").path("/"));

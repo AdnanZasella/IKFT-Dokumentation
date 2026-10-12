@@ -177,6 +177,8 @@ class LoginIntegrationTest {
 		assertThat(felsvar("", LOSENORD)).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("   ", LOSENORD)).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("d".repeat(51), LOSENORD)).isEqualTo(felLosenordSvar);
+		// NUL avvisas av databasen och får inte ge ett annat fel.
+		assertThat(felsvar("doku\\u0000menterare", LOSENORD)).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("dokumenterare", "")).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("dokumenterare", "x".repeat(257))).isEqualTo(felLosenordSvar);
 	}

@@ -53,17 +53,19 @@ class CsrfIntegrationTest {
 
 	private Cookie inloggning;
 
+	private Cookie csrfForeInloggningen;
+
+	/** Den nya CSRF-cookien från inloggningen. */
 	private Cookie csrf;
 
 	@BeforeEach
 	void forbered() throws Exception {
 		aterstall();
 		jdbc.sql("UPDATE user_account SET password_hash = ?").param(passwordEncoder.encode(LOSENORD)).update();
-		csrf = forstaAnropet().getCookie(CSRF_COOKIE);
-		inloggning = login(csrf).andExpect(status().isOk())
-			.andReturn()
-			.getResponse()
-			.getCookie(AccessTokens.COOKIE_NAME);
+		csrfForeInloggningen = forstaAnropet().getCookie(CSRF_COOKIE);
+		MockHttpServletResponse svar = login(csrfForeInloggningen).andExpect(status().isOk()).andReturn().getResponse();
+		inloggning = svar.getCookie(AccessTokens.COOKIE_NAME);
+		csrf = svar.getCookie(CSRF_COOKIE);
 	}
 
 	@AfterEach
@@ -103,6 +105,17 @@ class CsrfIntegrationTest {
 	}
 
 	@Test
+	void inloggningenByterCsrfToken() throws Exception {
+		assertThat(csrf.getValue()).isNotBlank().isNotEqualTo(csrfForeInloggningen.getValue());
+
+		// Den gamla token gäller inte längre, även om klienten skickar med den gamla cookien.
+		mockMvc
+			.perform(post("/api/v1/finns-inte").cookie(inloggning, csrf)
+				.header(CSRF_HEADER, csrfForeInloggningen.getValue()))
+			.andExpect(status().isForbidden());
+	}
+
+	@Test
 	void getKraverIngenCsrfToken() throws Exception {
 		mockMvc.perform(get("/api/v1/auth/me").cookie(inloggning)).andExpect(status().isOk());
 	}
@@ -119,6 +132,21 @@ class CsrfIntegrationTest {
 			.andReturn()
 			.getResponse()
 			.getHeaders(HttpHeaders.SET_COOKIE)).isEmpty();
+	}
+
+	@Test
+	void publikaSvarFarIngenCacheControlFranSakerhetskedjan() throws Exception {
+		// Varje publik endpoint bestämmer själv hur länge svaret får cachas.
+		assertThat(mockMvc.perform(get("/actuator/health"))
+			.andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getHeader(HttpHeaders.CACHE_CONTROL)).isNull();
+		// Admin-API:et ska fortfarande inte cachas.
+		assertThat(mockMvc.perform(get("/api/v1/auth/me").cookie(inloggning))
+			.andReturn()
+			.getResponse()
+			.getHeader(HttpHeaders.CACHE_CONTROL)).contains("no-store");
 	}
 
 	@Test

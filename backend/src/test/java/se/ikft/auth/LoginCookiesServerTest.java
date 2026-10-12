@@ -79,8 +79,13 @@ class LoginCookiesServerTest {
 		HttpResponse<String> response = client.send(login, HttpResponse.BodyHandlers.ofString());
 
 		assertThat(response.statusCode()).isEqualTo(200);
-		assertThat(cookie(response.headers().allValues("Set-Cookie"), AccessTokens.COOKIE_NAME)).contains("HttpOnly",
-				"Secure", "SameSite=Strict", "Path=/");
+		List<String> cookies = response.headers().allValues("Set-Cookie");
+		assertThat(cookie(cookies, AccessTokens.COOKIE_NAME)).contains("HttpOnly", "Secure", "SameSite=Strict",
+				"Path=/");
+		// Inloggningen byter CSRF-token, med samma attribut som förut.
+		List<String> nyCsrf = cookie(cookies, SecurityConfig.CSRF_COOKIE_NAME);
+		assertThat(nyCsrf.getFirst()).isNotEqualTo(csrfCookie);
+		assertThat(nyCsrf).contains("Secure", "SameSite=Strict", "Path=/").doesNotContain("HttpOnly");
 	}
 
 	private URI url(String path) {
