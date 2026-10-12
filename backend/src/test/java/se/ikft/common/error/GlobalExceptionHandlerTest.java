@@ -2,6 +2,7 @@ package se.ikft.common.error;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -31,8 +32,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import se.ikft.account.UserAccountRepository;
 import se.ikft.security.SecurityConfig;
 
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.FelController.class)
@@ -50,9 +54,16 @@ class GlobalExceptionHandlerTest {
 	@Autowired
 	MockMvc mockMvc;
 
+	// Krävs av säkerhetskedjan. Testerna loggar in med @WithMockUser, så de används inte.
+	@MockitoBean
+	UserAccountRepository accounts;
+
+	@MockitoBean
+	JwtDecoder jwtDecoder;
+
 	@Test
 	void valideringsfelGer400MedFaltlista() throws Exception {
-		mockMvc.perform(post("/api/v1/test/validera").contentType(MediaType.APPLICATION_JSON).content("{\"namn\":\"\"}"))
+		mockMvc.perform(post("/api/v1/test/validera").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"namn\":\"\"}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 			.andExpect(jsonPath("$.status").value(400))
@@ -111,7 +122,7 @@ class GlobalExceptionHandlerTest {
 	@Test
 	void felPaHelaObjektetFinnsIFaltlistan() throws Exception {
 		mockMvc
-			.perform(post("/api/v1/test/period").contentType(MediaType.APPLICATION_JSON)
+			.perform(post("/api/v1/test/period").with(csrf()).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"start\":5,\"slut\":1}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors[0].field").value("period"))

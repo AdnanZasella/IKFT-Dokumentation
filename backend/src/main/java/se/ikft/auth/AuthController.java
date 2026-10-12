@@ -1,13 +1,20 @@
 package se.ikft.auth;
 
+import java.util.UUID;
+
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import se.ikft.auth.LoginService.LoginResult;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -15,8 +22,30 @@ class AuthController {
 
 	private final SetupCodeService setupCodes;
 
-	AuthController(SetupCodeService setupCodes) {
+	private final LoginService loginService;
+
+	private final AccountInfoService accountInfo;
+
+	AuthController(SetupCodeService setupCodes, LoginService loginService, AccountInfoService accountInfo) {
 		this.setupCodes = setupCodes;
+		this.loginService = loginService;
+		this.accountInfo = accountInfo;
+	}
+
+	/** Det inloggade kontot. Inloggningens namn är kontots id. */
+	@GetMapping("/me")
+	AccountInfo me(Authentication authentication) {
+		return accountInfo.get(UUID.fromString(authentication.getName()));
+	}
+
+	/** Sätter inloggningscookien och svarar med kontot, så att klienten inte behöver fråga efter det. */
+	@PostMapping("/login")
+	AccountInfo login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+		LoginResult result = loginService.login(request.username(), request.password());
+		// addHeader och inte ResponseEntity.header, som skriver över XSRF-TOKEN-cookien från
+		// säkerhetskedjan i stället för att lägga till en cookie.
+		response.addHeader(HttpHeaders.SET_COOKIE, result.cookie().toString());
+		return result.account();
 	}
 
 	/** Öppen, eftersom den som sätter lösenordet inte kan vara inloggad. Kräver en giltig engångskod. */
