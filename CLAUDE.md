@@ -33,6 +33,9 @@ Kör i `backend/`:
 Docker krävs. Lokalt startar `spring-boot-docker-compose` Postgres 18 från `compose.yaml`,
 och testerna använder Testcontainers.
 
+`spring-boot:run` kräver miljövariabeln `IKFT_SECURITY_JWT_SECRET` (base64, minst 32 byte, t.ex.
+`openssl rand -base64 32`). Repot har ingen standardnyckel. Testerna slumpar en egen nyckel.
+
 ## Konventioner
 
 - Databasändringar görs med Flyway. JPA körs med `open-in-view: false` och
