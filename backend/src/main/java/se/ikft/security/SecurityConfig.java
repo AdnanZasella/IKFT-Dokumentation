@@ -117,6 +117,7 @@ public class SecurityConfig {
 				// får 403 och inte 400. @PreAuthorize på controllern är ett andra lager.
 				.requestMatchers(HttpMethod.GET, "/api/v1/members").hasAnyRole("ADMIN", "DOCUMENTER")
 				.requestMatchers("/api/v1/members", "/api/v1/members/**").hasRole("ADMIN")
+				.requestMatchers("/api/v1/audit-log", "/api/v1/audit-log/**").hasRole("ADMIN")
 				.requestMatchers("/api/v1/**").authenticated()
 				.anyRequest().denyAll())
 			.exceptionHandling(exceptions -> exceptions

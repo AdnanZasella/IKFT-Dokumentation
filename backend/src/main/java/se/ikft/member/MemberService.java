@@ -4,12 +4,17 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import se.ikft.account.Role;
+import se.ikft.audit.AuditAction;
+import se.ikft.audit.AuditEntity;
+import se.ikft.audit.AuditService;
+import se.ikft.audit.FieldChange;
 import se.ikft.common.config.GrantProperties;
 import se.ikft.common.error.BadRequestException;
 import se.ikft.common.error.NotFoundException;
@@ -39,14 +44,17 @@ class MemberService {
 
 	private final GrantProperties grant;
 
+	private final AuditService audit;
+
 	private final Clock clock;
 
 	MemberService(MemberRepository members, MemberFifsFeeRepository fifsFees, MemberRoleRepository roles,
-			GrantProperties grant, Clock clock) {
+			GrantProperties grant, AuditService audit, Clock clock) {
 		this.members = members;
 		this.fifsFees = fifsFees;
 		this.roles = roles;
 		this.grant = grant;
+		this.audit = audit;
 		this.clock = clock;
 	}
 
@@ -78,27 +86,39 @@ class MemberService {
 
 	@Transactional
 	public Details create(MemberRequest request) {
-		Member member = Member.create(checked(request), Instant.now(clock));
-		return details(members.save(member));
+		Member member = members.save(Member.create(checked(request), Instant.now(clock)));
+		audit.record(AuditEntity.MEMBER, member.getId(), AuditAction.CREATED,
+				MemberAudit.diff(Map.of(), MemberAudit.snapshot(member)));
+		return details(member);
 	}
 
+	/** Loggar bara om något faktiskt ändrats. */
 	@Transactional
 	public Details update(UUID id, MemberRequest request) {
 		Member member = find(id);
+		Member.Details checked = checked(request);
+		Map<String, String> before = MemberAudit.snapshot(member);
 		Instant now = Instant.now(clock);
-		member.update(checked(request), now);
+		member.update(checked, now);
 		if (request.status() != null) {
 			member.setStatus(request.status(), now);
+		}
+		List<FieldChange> changes = MemberAudit.diff(before, MemberAudit.snapshot(member));
+		if (!changes.isEmpty()) {
+			audit.record(AuditEntity.MEMBER, id, AuditAction.UPDATED, changes);
 		}
 		return details(member);
 	}
 
-	/** Inaktiverar medlemmen. Anropas den igen på en inaktiv medlem händer ingenting. */
+	/** Inaktiverar medlemmen. Anropas den igen på en inaktiv medlem händer ingenting, och inget loggas. */
 	@Transactional
 	public void deactivate(UUID id) {
 		Member member = find(id);
 		if (member.getStatus() != MemberStatus.INACTIVE) {
+			MemberStatus before = member.getStatus();
 			member.setStatus(MemberStatus.INACTIVE, Instant.now(clock));
+			audit.record(AuditEntity.MEMBER, id, AuditAction.DEACTIVATED, List.of(FieldChange
+				.withValues("status", before.name(), MemberStatus.INACTIVE.name())));
 		}
 	}
 
@@ -114,6 +134,10 @@ class MemberService {
 		}
 		MemberRole saved = roles
 			.save(new MemberRole(memberId, title, request.startDate(), request.endDate(), Instant.now(clock)));
+		// Rollen är en uppgift om föreningen och inte om personen, så den loggas med värde.
+		String period = request.endDate() == null ? request.startDate() + "–" : request.startDate() + "–" + request.endDate();
+		audit.record(AuditEntity.MEMBER, memberId, AuditAction.UPDATED,
+				List.of(FieldChange.withValues("role", null, title + " " + period)));
 		return roleInfo(saved);
 	}
 
@@ -128,8 +152,14 @@ class MemberService {
 		if (year < EARLIEST_FEE_YEAR || year > today.getYear() + 1) {
 			throw new BadRequestException("Året måste vara mellan " + EARLIEST_FEE_YEAR + " och " + (today.getYear() + 1) + ".");
 		}
-		MemberFifsFee fee = fifsFees.findByMemberIdAndYear(memberId, year)
-			.orElseGet(() -> fifsFees.save(new MemberFifsFee(memberId, year, today, Instant.now(clock))));
+		MemberFifsFee existing = fifsFees.findByMemberIdAndYear(memberId, year).orElse(null);
+		if (existing != null) {
+			// Redan markerad: ingenting ändras, så inget loggas.
+			return feeInfo(existing);
+		}
+		MemberFifsFee fee = fifsFees.save(new MemberFifsFee(memberId, year, today, Instant.now(clock)));
+		audit.record(AuditEntity.MEMBER, memberId, AuditAction.UPDATED,
+				List.of(FieldChange.withValues("fifsFee", null, String.valueOf(year))));
 		return feeInfo(fee);
 	}
 

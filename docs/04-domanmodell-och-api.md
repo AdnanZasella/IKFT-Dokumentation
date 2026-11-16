@@ -109,8 +109,12 @@ Admin/Dok. ──> admin.<domän>.se (React, PWA) ──> /api/v1/*  (inloggning
   kan skrivas direkt i systemet eller laddas upp som fil.
 - **Bilaga** — filer kopplade till en sammankomst eller ett möte (internt, aldrig publikt).
 - **Ändringslogg** — varje skapande, ändring och inaktivering av sammankomst, närvaro, möte,
-  medlem, bönetid eller artikel loggas med vem (innehavare), när och vad som ändrades
-  (före/efter).
+  medlem, bönetid eller artikel loggas med vem (innehavare), när och vad som ändrades.
+  Loggen sparar så lite personuppgifter som möjligt: bara fält som påverkar bidragssiffrorna
+  (för medlemmar födelsedatum, hemkommun och status) sparas med före- och efter-värde. Övriga
+  fält, som namn och adress, loggas bara som ändrade. Ändringen och loggposten sparas i samma
+  transaktion, och ett anrop som inte ändrar något loggas inte. Medlemmens föreningsroller och
+  moskéavgift loggas på medlemmen.
 - **Verksamhetsberättelse/rapport** — ingen egen lagrad tabell, utan en beräknad
   sammanställning över ett valt datumintervall. När en rapport har lämnats in till kommunen kan
   Admin **frysa en ögonblicksbild** (PDF + underliggande siffror).
@@ -236,7 +240,7 @@ och den inloggade användaren inte är Admin.*
 | `GET /reports/stats?year=` | Admin | JSON-statistik per medlem och sammankomst. |
 | `GET /reports/export?year=&format=csv` | Admin | Tabellexport för kommunens e-tjänst. |
 | `POST /reports/snapshots` | Admin | Frys en inlämnad rapport. |
-| `GET /audit-log?entity=&id=` | Admin | Ändringslogg för en post. |
+| `GET /audit-log?entity=&id=` | Admin | Ändringslogg för en post (`entity=MEMBER` tills fler typer finns), senaste ändringen först. |
 | `GET/PUT /settings/grant-rules` | Admin | Bidragsparametrar och redigeringsfönster. |
 
 Behörighetsstyrningen hanteras i backend via Spring Security, inte enbart i frontend.

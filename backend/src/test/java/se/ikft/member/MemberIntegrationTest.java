@@ -71,6 +71,8 @@ class MemberIntegrationTest {
 	@AfterEach
 	void stada() {
 		jdbc.sql("UPDATE user_account SET password_hash = NULL, token_version = 0, holder_member_id = NULL").update();
+		jdbc.sql("DELETE FROM audit_log_change").update();
+		jdbc.sql("DELETE FROM audit_log").update();
 		jdbc.sql("DELETE FROM member_fifs_fee").update();
 		jdbc.sql("DELETE FROM member_role").update();
 		jdbc.sql("DELETE FROM member").update();
