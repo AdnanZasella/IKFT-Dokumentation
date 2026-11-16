@@ -156,12 +156,13 @@ class LoginLockoutIntegrationTest {
 	}
 
 	@Test
-	void nulIAnvandarnamnetRaknasOchAvslojarInteKontot() throws Exception {
-		for (int i = 0; i < 5; i++) {
-			login("doku\\u0000menterare", FEL_LOSENORD, "10.0.0.1").andExpect(status().isUnauthorized());
+	void nulIAnvandarnamnetAvvisasInnanDetRaknasSomForsok() throws Exception {
+		// Avvisas när JSON läses, före inloggningen, så det ger 400 oavsett konto och räknas inte.
+		for (int i = 0; i < 6; i++) {
+			login("doku\\u0000menterare", FEL_LOSENORD, "10.0.0.1").andExpect(status().isBadRequest());
 		}
 
-		login("doku\\u0000menterare", FEL_LOSENORD, "10.0.0.1").andExpect(status().isTooManyRequests());
+		login("dokumenterare", LOSENORD, "10.0.0.1").andExpect(status().isOk());
 	}
 
 	@Test

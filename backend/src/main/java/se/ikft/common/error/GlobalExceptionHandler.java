@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -35,6 +37,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+	/**
+	 * SQLSTATE-koder som beror på indata: 22021 och 22P05 (ogiltiga tecken, t.ex. NUL) och 22001 (för långt
+	 * värde).
+	 */
+	private static final Set<String> INPUT_SQL_STATES = Set.of("22021", "22P05", "22001");
+
 	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -49,6 +57,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			.getGlobalErrors()
 			.forEach(error -> errors.add(error(error.getObjectName(), error.getDefaultMessage())));
 		body.setProperty("errors", errors);
+		return handleExceptionInternal(ex, body, headers, status, request);
+	}
+
+	/**
+	 * Trasig JSON eller text med kontrolltecken, se {@link se.ikft.common.config.JsonConfig}. Jacksons
+	 * meddelande skickas inte vidare, eftersom det kan innehålla delar av det som klienten skickade.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+				"Begäran kunde inte läsas. Kontrollera formatet och att texten inte innehåller kontrolltecken.");
 		return handleExceptionInternal(ex, body, headers, status, request);
 	}
 
@@ -87,14 +107,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
-	ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-		// Databasens meddelande skickas inte till klienten.
-		log.info("Databasen avvisade ändringen: {}", ex.getMostSpecificCause().getMessage());
-		// SQLSTATE-klass 22 är fel i själva värdet, t.ex. NUL i text, och alltså ett fel i begäran.
-		if (ex.getMostSpecificCause() instanceof SQLException sql && sql.getSQLState() != null
-				&& sql.getSQLState().startsWith("22")) {
-			return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Begäran innehåller ogiltiga värden.");
+	ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) throws Exception {
+		String sqlState = (ex.getMostSpecificCause() instanceof SQLException sql) ? sql.getSQLState() : null;
+		// Bara de koder som beror på vad klienten skickade är ett fel i begäran. Övriga i klass 22, t.ex.
+		// division med noll eller en felaktig typomvandling, är buggar i serverns egen SQL och ska synas.
+		if (sqlState != null && sqlState.startsWith("22")) {
+			if (INPUT_SQL_STATES.contains(sqlState)) {
+				// Databasens meddelande skickas inte till klienten.
+				log.info("Databasen avvisade ett värde i begäran ({}): {}", sqlState,
+						ex.getMostSpecificCause().getMessage());
+				return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Begäran innehåller ogiltiga värden.");
+			}
+			return handleUnexpected(ex);
 		}
+		log.info("Databasen avvisade ändringen: {}", ex.getMostSpecificCause().getMessage());
 		// T.ex. en dubblett av ett unikt värde.
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Ändringen krockar med befintliga uppgifter.");
 	}

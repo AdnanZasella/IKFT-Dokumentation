@@ -1,5 +1,6 @@
 package se.ikft.common.error;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -14,6 +15,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.sql.SQLException;
+import java.time.Duration;
 
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.RequestDispatcher;
@@ -25,7 +27,12 @@ import jakarta.validation.Payload;
 import jakarta.validation.constraints.NotBlank;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -38,16 +45,20 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import se.ikft.account.UserAccountRepository;
+import se.ikft.common.config.JsonConfig;
 import se.ikft.security.SecurityConfig;
 
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.FelController.class)
-@Import({ GlobalExceptionHandlerTest.FelController.class, ProblemDetailErrorController.class, SecurityConfig.class })
+@Import({ GlobalExceptionHandlerTest.FelController.class, ProblemDetailErrorController.class, SecurityConfig.class,
+		JsonConfig.class })
+@ExtendWith(OutputCaptureExtension.class)
 @WithMockUser(roles = "DOCUMENTER")
 class GlobalExceptionHandlerTest {
 
@@ -188,6 +199,77 @@ class GlobalExceptionHandlerTest {
 			.andExpect(jsonPath("$.status").value(400));
 	}
 
+	@ParameterizedTest
+	@ValueSource(strings = { "22021", "22P05", "22001" })
+	void sqlstateSomBerorPaIndataGer400(String sqlstate, CapturedOutput output) throws Exception {
+		mockMvc.perform(get("/api/v1/test/sqlstate/" + sqlstate))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.detail").value("Begäran innehåller ogiltiga värden."))
+			.andExpect(content().string(not(containsString("hemlig"))));
+
+		// Fel i indata är inget serverfel.
+		assertThat(output.getAll()).doesNotContain("ERROR");
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "22012", "22004", "2201B", "22P02", "22003", "22000" })
+	void sqlstateSomInteBerorPaIndataGer500OchLoggasPaError(String sqlstate, CapturedOutput output)
+			throws Exception {
+		mockMvc.perform(get("/api/v1/test/sqlstate/" + sqlstate))
+			.andExpect(status().isInternalServerError())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.detail").value("Ett oväntat fel inträffade."))
+			.andExpect(content().string(not(containsString("hemlig"))));
+
+		assertThat(output.getAll()).contains("ERROR").contains("Oväntat fel").contains("hemlig databasdetalj");
+	}
+
+	@Test
+	void andraSqlstateKlasserBeteSigSomForut() throws Exception {
+		// Unik- och främmande nyckel-brott är konflikter, inte serverfel.
+		mockMvc.perform(get("/api/v1/test/sqlstate/23505")).andExpect(status().isConflict());
+		mockMvc.perform(get("/api/v1/test/sqlstate/23503")).andExpect(status().isConflict());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "\\u0000", "admin\\u0000", "\\u0001", "\\u007f", "\\u0085", "a\\u000bb" })
+	void kontrolltecknIJsonGer400UtanAttHanteraren(String escaped, CapturedOutput output) throws Exception {
+		mockMvc
+			.perform(post("/api/v1/test/validera").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"namn\":\"" + escaped + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.status").value(400))
+			.andExpect(jsonPath("$.detail").value(
+					"Begäran kunde inte läsas. Kontrollera formatet och att texten inte innehåller kontrolltecken."))
+			.andExpect(content().string(not(containsString("admin"))));
+
+		assertThat(output.getAll()).doesNotContain("ERROR");
+	}
+
+	@Test
+	void radbrytningOchTabbIJsonGodtas() throws Exception {
+		mockMvc
+			.perform(post("/api/v1/test/validera").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"namn\":\"rad ett\\nrad två\\ten tabb\\r\"}"))
+			.andExpect(status().isOk());
+	}
+
+	@Test
+	void trasigJsonGer400MedSvensktMeddelande() throws Exception {
+		mockMvc
+			.perform(post("/api/v1/test/validera").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{inte json"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.detail").value(
+					"Begäran kunde inte läsas. Kontrollera formatet och att texten inte innehåller kontrolltecken."));
+	}
+
 	record Namn(@NotBlank String namn) {
 	}
 
@@ -240,8 +322,8 @@ class GlobalExceptionHandlerTest {
 		}
 
 		@GetMapping("/api/v1/test/for-manga/{millis}")
-		String forManga(@org.springframework.web.bind.annotation.PathVariable long millis) {
-			throw new TooManyRequestsException("För många försök.", java.time.Duration.ofMillis(millis));
+		String forManga(@PathVariable long millis) {
+			throw new TooManyRequestsException("För många försök.", Duration.ofMillis(millis));
 		}
 
 		@GetMapping("/api/v1/test/krasch")
@@ -281,6 +363,12 @@ class GlobalExceptionHandlerTest {
 		String ogiltigtVarde() {
 			throw new DataIntegrityViolationException("could not execute statement",
 					new SQLException("invalid byte sequence for encoding \"UTF8\": 0x00", "22021"));
+		}
+
+		@GetMapping("/api/v1/test/sqlstate/{state}")
+		String sqlstate(@PathVariable String state) {
+			throw new DataIntegrityViolationException("could not execute statement",
+					new SQLException("hemlig databasdetalj", state));
 		}
 
 	}

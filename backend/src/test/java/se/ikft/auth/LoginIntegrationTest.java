@@ -182,10 +182,26 @@ class LoginIntegrationTest {
 		assertThat(felsvar("", LOSENORD)).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("   ", LOSENORD)).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("d".repeat(51), LOSENORD)).isEqualTo(felLosenordSvar);
-		// NUL avvisas av databasen och får inte ge ett annat fel.
-		assertThat(felsvar("doku\\u0000menterare", LOSENORD)).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("dokumenterare", "")).isEqualTo(felLosenordSvar);
 		assertThat(felsvar("dokumenterare", "x".repeat(257))).isEqualTo(felLosenordSvar);
+	}
+
+	@Test
+	void kontrolltecknIAnvandarnamnetGer400OavsettKonto() throws Exception {
+		// Avvisas när JSON läses, före inloggningen. Svaret är detsamma för ett konto som finns och ett som inte
+		// gör det, så det avslöjar inget.
+		String riktigt = login("doku\\u0000menterare", LOSENORD).andExpect(status().isBadRequest())
+			.andReturn()
+			.getResponse()
+			.getContentAsString(UTF_8);
+		String okant = login("finns-inte\\u0000", LOSENORD).andExpect(status().isBadRequest())
+			.andReturn()
+			.getResponse()
+			.getContentAsString(UTF_8);
+		assertThat(riktigt).isEqualTo(okant);
+		login("dokumenterare\\u0001", LOSENORD).andExpect(status().isBadRequest());
+		// Ett kontrolltecken i lösenordet avvisas på samma sätt.
+		login("dokumenterare", "ett-langt\\u0000losenord").andExpect(status().isBadRequest());
 	}
 
 	@Test
