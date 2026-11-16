@@ -73,7 +73,7 @@ Admin/Dok. ──> admin.<domän>.se (React, PWA) ──> /api/v1/*  (inloggning
 
 - **Medlem** — förnamn, efternamn, **födelsedatum** (fullständigt personnummer lagras inte),
   adress/hemkommun (för att avgöra om medlemmen är boende i Trollhättan), medlem-sedan-datum,
-  status (aktiv/inaktiv), **betald medlemsavgift per år**, samt för minderåriga uppgift om att
+  status (aktiv/inaktiv), **betald moskéavgift via FIFS per år** (föreningens egen medlemsavgift läggs till när medlemskapet är bestämt), samt för minderåriga uppgift om att
   vårdnadshavares medgivande finns. Åldern räknas alltid **per sammankomstens datum**. En medlem
   kan ha en eller flera **föreningsroller** över tid (t.ex. ordförande 2025, kassör 2026), som
   används i verksamhetsberättelsen och på hemsidans "Om oss"-sida (endast namn och roll).
@@ -163,13 +163,13 @@ avstämd.
 
 | Metod & path | Roll | Beskrivning |
 |---|---|---|
-| `GET /members` | Admin, Dokumenterare | Lista medlemmar. Dokumenterare ser bara namn och åldersgrupp. |
+| `GET /members` | Admin, Dokumenterare | Lista medlemmar. Admin kan filtrera med `?status=ACTIVE\|INACTIVE`. Dokumenterare ser bara aktiva medlemmar och bara namn och åldersgrupp. Åldersgruppen (yngre, ungdom, äldre) räknas per dagens datum mot de konfigurerbara åldersgränserna. |
 | `POST /members` | Admin | Lägg till ny medlem. |
 | `GET /members/{id}` | Admin | Se grunduppgifter. |
-| `PUT /members/{id}` | Admin | Uppdatera. |
+| `PUT /members/{id}` | Admin | Uppdatera. Med fältet `status` kan en inaktiverad medlem aktiveras igen. |
 | `DELETE /members/{id}` | Admin | Inaktivera (ingen hård radering). |
 | `POST /members/{id}/roles` | Admin | Registrera föreningsroll för en period. |
-| `PUT /members/{id}/fees/{year}` | Admin | Markera medlemsavgift som betald. |
+| `PUT /members/{id}/fifs-fees/{year}` | Admin | Markera att medlemmen betalat moskéavgiften via FIFS för ett år. Föreningens egen medlemsavgift hanteras senare, när medlemskapet är bestämt. Anropas den igen behålls det första datumet. |
 
 **Dokumenteraruppdrag — Fas 1**
 

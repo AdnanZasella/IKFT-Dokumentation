@@ -52,6 +52,20 @@ och testerna använder Testcontainers.
 - Dataminimering: lagra födelsedatum, aldrig personnummer. Medlemmar inaktiveras, de raderas inte.
 - Artikeltext saneras i backend innan den sparas.
 
+## Tester
+
+- Ingen funktion är klar utan tester på rätt nivå. En buggfix börjar med ett test som misslyckas.
+- Enhetstester (JUnit 5, AssertJ) för ren logik utan Spring och databas, t.ex. bidragsberäkning,
+  engångskoder och tidslogik med fast `Clock`.
+- Integrationstester (`@SpringBootTest`, MockMvc, Testcontainers) för varje endpoint. Varje endpoint
+  testas minst för lyckat fall, valideringsfel, 401 och 403 för fel roll. Använd `TestCsrf.csrfToken()`
+  för muterande anrop.
+- Bidragsregler testas med gränsvärden (59/60 minuter, 2/3 deltagare, ålder 6/7/25/26).
+- Playwright (E2E) läggs i `e2e/` när admin-appen har en första sida. Håll antalet E2E-tester litet
+  och täck bara de viktigaste flödena.
+- Testdata är påhittad, aldrig riktiga personer.
+- `./mvnw verify` skriver täckningsrapport (JaCoCo) till `backend/target/site/jacoco/`. Ingen hård gräns.
+
 ## Docs
 
 - Specifikationen ligger i delfiler. Redigera rätt delfil och länka mellan filer med relativa
