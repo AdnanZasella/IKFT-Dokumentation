@@ -122,6 +122,10 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/v1/members").hasAnyRole("ADMIN", "DOCUMENTER")
 				.requestMatchers("/api/v1/members", "/api/v1/members/**").hasRole("ADMIN")
 				.requestMatchers("/api/v1/audit-log", "/api/v1/audit-log/**").hasRole("ADMIN")
+				.requestMatchers(HttpMethod.GET, "/api/v1/documenter-assignment/current")
+				.hasAnyRole("ADMIN", "DOCUMENTER")
+				.requestMatchers("/api/v1/documenter-assignment", "/api/v1/documenter-assignment/**")
+				.hasRole("ADMIN")
 				.requestMatchers("/api/v1/**").authenticated()
 				.anyRequest().denyAll())
 			.exceptionHandling(exceptions -> exceptions

@@ -84,7 +84,7 @@ och testerna använder Testcontainers.
   och täck bara de viktigaste flödena.
 - Testdata är påhittad, aldrig riktiga personer.
 - Integrationstester som skriver till databasen städar själva. Ordningen vid städning är
-  `audit_log_change`, `audit_log`, `member_fifs_fee`, `member_role`, `member`, annars stoppar
+  `audit_log_change`, `audit_log`, `member_fifs_fee`, `member_role`, `documenter_assignment`, `member`, annars stoppar
   främmande nycklar raderingen. Testkontexten delas, så ett test som lämnar rader kvar kan fälla ett annat.
 - Ändringsloggen skrivs med `AuditService.record(...)` i samma transaktion som ändringen. Anropet kräver
   en pågående transaktion. Ändringar som inte ändrar något, och misslyckade anrop, ska inte loggas.
