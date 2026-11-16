@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import se.ikft.account.UserAccountRepository;
 import se.ikft.security.AccessTokens;
+import se.ikft.security.RefreshTokens;
 
 /**
  * Att BCrypt körs även när svaret redan är givet, så att svarstiden inte skiljer sig.
@@ -30,7 +31,7 @@ class LoginServiceTest {
 	private final PasswordEncoder passwordEncoder = spy(new BCryptPasswordEncoder(4));
 
 	private final LoginService loginService = new LoginService(accounts, passwordEncoder,
-			mock(AccessTokens.class), mock(AccountInfoService.class));
+			mock(AccessTokens.class), mock(RefreshTokens.class), mock(AccountInfoService.class));
 
 	@ParameterizedTest
 	@ValueSource(ints = { 0, 74, 300 })

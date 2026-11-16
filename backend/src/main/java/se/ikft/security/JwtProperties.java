@@ -21,13 +21,16 @@ import org.springframework.validation.annotation.Validated;
  * startar appen inte. Som engångskommando utan webbserver behövs den inte, se {@link SecurityConfig}.
  *
  * @param secret nyckeln för HS256 som base64, minst 32 byte efter avkodning
- * @param validity hur länge en token gäller, minst en minut
+ * @param validity hur länge en åtkomsttoken gäller, minst en minut
+ * @param refreshValidity hur länge en förnyelsetoken gäller, minst en minut. Efter det måste användaren
+ * logga in igen.
  */
 @Validated
 @ConditionalOnWebApplication
 @ConfigurationProperties("ikft.security.jwt")
 public record JwtProperties(@NotBlank String secret,
-		@DefaultValue("15m") @DurationMin(minutes = 1) Duration validity) {
+		@DefaultValue("15m") @DurationMin(minutes = 1) Duration validity,
+		@DefaultValue("30d") @DurationMin(minutes = 1) Duration refreshValidity) {
 
 	/** HS256 kräver en nyckel på minst 256 bitar. */
 	static final int MIN_KEY_BYTES = 32;
@@ -47,7 +50,8 @@ public record JwtProperties(@NotBlank String secret,
 	/** Utan nyckeln, så att den inte hamnar i loggen om objektet skrivs ut. */
 	@Override
 	public String toString() {
-		return "JwtProperties[secret=****, validity=%s]".formatted(validity);
+		return "JwtProperties[secret=****, validity=%s, refreshValidity=%s]".formatted(validity,
+				refreshValidity);
 	}
 
 	private static byte[] decode(String secret) {

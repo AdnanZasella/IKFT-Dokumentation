@@ -9,7 +9,10 @@ Del av [projektspecifikationen](00-oversikt.md).
 - JWT i en **HttpOnly, Secure cookie** med `SameSite=Strict`, satt endast för admin-subdomänen.
   Muterande anrop skyddas med CSRF-token, även inloggning och `set-password`.
 - Rimlig giltighetstid och förnyelse (refresh) så att användare inte behöver logga in orimligt
-  ofta på mobilen.
+  ofta på mobilen. Åtkomsttoken gäller 15 minuter och förnyelsetoken 30 dagar (båda konfigurerbara,
+  `ikft.security.jwt.validity` och `ikft.security.jwt.refresh-validity`). Förnyelsetoken ligger i en egen
+  HttpOnly-cookie som bara skickas till `/api/v1/auth/refresh`. Efter 30 dagar krävs ny inloggning. Båda
+  token ogiltigförklaras av tokenversionen, men utloggning rensar bara cookies i webbläsaren.
 - **Innehavarbyte ogiltigförklarar sessioner** via tokenversion och kräver att lösenordet byts
   vid första inloggningen (se
   [Målgrupp och användarroller](01-dokumentationssystem.md#målgrupp-och-användarroller)). Så länge

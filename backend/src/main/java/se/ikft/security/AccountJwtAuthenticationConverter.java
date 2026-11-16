@@ -29,6 +29,7 @@ class AccountJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthen
 	@Override
 	public AbstractAuthenticationToken convert(Jwt jwt) {
 		UserAccount account = accountId(jwt).flatMap(accounts::findById)
+			.filter(found -> AccessTokens.ACCESS_USE.equals(jwt.getClaimAsString(AccessTokens.TOKEN_USE_CLAIM)))
 			.filter(found -> tokenVersion(jwt) == found.getTokenVersion())
 			.orElseThrow(() -> new InvalidBearerTokenException("Token gäller inte längre."));
 		// Rollen tas från databasen, inte från token.

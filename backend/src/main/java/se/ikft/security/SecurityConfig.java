@@ -62,6 +62,10 @@ public class SecurityConfig {
 	 */
 	static final RequestMatcher WITHOUT_LOGIN = new OrRequestMatcher(
 			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/login"),
+			// Förnyelsen skyddas av förnyelsecookien. Utloggningen bara rensar cookies, och ska fungera
+			// även när åtkomsttoken har gått ut.
+			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/refresh"),
+			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/logout"),
 			// Skyddas av engångskoden i stället för inloggning.
 			PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/auth/set-password"));
 

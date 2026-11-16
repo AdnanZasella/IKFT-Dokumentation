@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import se.ikft.account.UserAccount;
 import se.ikft.account.UserAccountRepository;
 import se.ikft.security.AccessTokens;
+import se.ikft.security.RefreshTokens;
 
 /**
  * Inloggning med användarnamn och lösenord.
@@ -27,6 +28,9 @@ class LoginService {
 	 */
 	static final String INVALID_CREDENTIALS = "Fel användarnamn eller lösenord.";
 
+	/** Svaret när förnyelsetoken saknas eller inte längre gäller. */
+	static final String INVALID_SESSION = "Sessionen har gått ut. Logga in igen.";
+
 	/** Jämförs i stället för ett lösenord som inte kan vara rätt, så att BCrypt ändå körs. */
 	private static final String UNUSABLE_PASSWORD = "inget-konto-har-det-har-losenordet";
 
@@ -38,6 +42,8 @@ class LoginService {
 
 	private final AccessTokens accessTokens;
 
+	private final RefreshTokens refreshTokens;
+
 	private final AccountInfoService accountInfo;
 
 	/**
@@ -47,16 +53,20 @@ class LoginService {
 	private final String dummyHash;
 
 	LoginService(UserAccountRepository accounts, PasswordEncoder passwordEncoder, AccessTokens accessTokens,
-			AccountInfoService accountInfo) {
+			RefreshTokens refreshTokens, AccountInfoService accountInfo) {
 		this.accounts = accounts;
 		this.passwordEncoder = passwordEncoder;
 		this.accessTokens = accessTokens;
+		this.refreshTokens = refreshTokens;
 		this.accountInfo = accountInfo;
 		this.dummyHash = passwordEncoder.encode(UNUSABLE_PASSWORD);
 	}
 
-	/** Ett lyckat försök: cookien med token och kontot som det visas för klienten. */
-	record LoginResult(ResponseCookie cookie, AccountInfo account) {
+	/**
+	 * Ett lyckat försök: cookien med åtkomsttoken, cookien med förnyelsetoken (null vid förnyelse, där den
+	 * gamla fortsätter gälla) och kontot som det visas för klienten.
+	 */
+	record LoginResult(ResponseCookie cookie, ResponseCookie refreshCookie, AccountInfo account) {
 	}
 
 	/**
@@ -79,7 +89,20 @@ class LoginService {
 		}
 		UserAccount account = withPassword.get();
 		log.info("Inloggning lyckades för {}.", account.getUsername());
-		return new LoginResult(accessTokens.issue(account), accountInfo.get(account));
+		return new LoginResult(accessTokens.issue(account), refreshTokens.issue(account), accountInfo.get(account));
+	}
+
+	/**
+	 * Ger en ny åtkomsttoken mot en giltig förnyelsetoken. Förnyelsetoken byts inte ut, så en session
+	 * varar som längst så länge förnyelsetoken gäller, och sedan krävs ny inloggning. Alla fel ger samma
+	 * svar som en misslyckad inloggning.
+	 */
+	public LoginResult refresh(String refreshToken) {
+		UserAccount account = refreshTokens.authenticate(refreshToken).orElseThrow(() -> {
+			log.warn("Förnyelse nekades.");
+			return new BadCredentialsException(INVALID_SESSION);
+		});
+		return new LoginResult(accessTokens.issue(account), null, accountInfo.get(account));
 	}
 
 	/**

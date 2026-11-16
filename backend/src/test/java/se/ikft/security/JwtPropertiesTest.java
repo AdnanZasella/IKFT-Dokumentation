@@ -22,6 +22,7 @@ class JwtPropertiesTest {
 		runner.withPropertyValues("ikft.security.jwt.secret=" + NYCKEL_32_BYTE).run(context -> {
 			JwtProperties properties = context.getBean(JwtProperties.class);
 			assertThat(properties.validity()).isEqualTo(Duration.ofMinutes(15));
+			assertThat(properties.refreshValidity()).isEqualTo(Duration.ofDays(30));
 			assertThat(properties.key().getEncoded()).hasSize(32);
 		});
 	}
@@ -29,9 +30,9 @@ class JwtPropertiesTest {
 	@Test
 	void toStringVisarInteNyckeln() {
 		String nyckel = Base64.getEncoder().encodeToString("en-hemlig-nyckel-pa-minst-32-byte".getBytes());
-		JwtProperties properties = new JwtProperties(nyckel, Duration.ofMinutes(15));
+		JwtProperties properties = new JwtProperties(nyckel, Duration.ofMinutes(15), Duration.ofDays(30));
 
-		assertThat(properties.toString()).doesNotContain(nyckel).contains("PT15M");
+		assertThat(properties.toString()).doesNotContain(nyckel).contains("PT15M").contains("PT720H");
 	}
 
 	@Test
@@ -42,7 +43,8 @@ class JwtPropertiesTest {
 		String radbruten = Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(bytes);
 		assertThat(radbruten).contains("\n");
 
-		assertThat(new JwtProperties(radbruten, Duration.ofMinutes(15)).key().getEncoded()).isEqualTo(bytes);
+		assertThat(new JwtProperties(radbruten, Duration.ofMinutes(15), Duration.ofDays(30)).key().getEncoded())
+			.isEqualTo(bytes);
 	}
 
 	@Test
@@ -66,6 +68,26 @@ class JwtPropertiesTest {
 	@Test
 	void giltighetstidUnderEnMinutStopparUppstarten() {
 		runner.withPropertyValues("ikft.security.jwt.secret=" + NYCKEL_32_BYTE, "ikft.security.jwt.validity=30s")
+			.run(context -> assertThat(context).hasFailed());
+	}
+
+	@Test
+	void konfigureradeGiltighetstiderGaller() {
+		runner
+			.withPropertyValues("ikft.security.jwt.secret=" + NYCKEL_32_BYTE, "ikft.security.jwt.validity=5m",
+					"ikft.security.jwt.refresh-validity=7d")
+			.run(context -> {
+				JwtProperties properties = context.getBean(JwtProperties.class);
+				assertThat(properties.validity()).isEqualTo(Duration.ofMinutes(5));
+				assertThat(properties.refreshValidity()).isEqualTo(Duration.ofDays(7));
+			});
+	}
+
+	@Test
+	void forneyelsetidUnderEnMinutStopparUppstarten() {
+		runner
+			.withPropertyValues("ikft.security.jwt.secret=" + NYCKEL_32_BYTE,
+					"ikft.security.jwt.refresh-validity=30s")
 			.run(context -> assertThat(context).hasFailed());
 	}
 
