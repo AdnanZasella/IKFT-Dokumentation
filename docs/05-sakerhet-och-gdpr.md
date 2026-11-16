@@ -18,8 +18,14 @@ Del av [projektspecifikationen](00-oversikt.md).
   [Målgrupp och användarroller](01-dokumentationssystem.md#målgrupp-och-användarroller)). Så länge
   kontot är markerat med "måste byta lösenord" nekas alla anrop med 403 utom byte av lösenord,
   utloggning och `GET /auth/me`. Spärren ligger i backend, inte bara i gränssnittet.
-- **Begränsning av inloggningsförsök** (t.ex. tillfällig spärr efter upprepade felaktiga
-  försök), eftersom inloggningssidan nu nås från en publik hemsida.
+- **Begränsning av inloggningsförsök**, eftersom inloggningssidan nås från en publik hemsida. Efter 5
+  misslyckade försök per användarnamn eller IP-adress spärras inloggningen i 15 minuter (båda värdena
+  konfigurerbara, `ikft.auth.login-max-attempts` och `ikft.auth.login-lockout`). Under spärren ger
+  inloggning 429 med `Retry-After`, även med rätt lösenord, och svaret är detsamma för okända
+  användarnamn. En lyckad inloggning nollställer räknaren för användarnamnet. Räknaren ligger i minnet,
+  eftersom appen körs som en enda instans, och nollställs vid omstart. IP-adressen är anslutningens
+  adress. Körs appen bakom en proxy måste den vidarebefordrade adressen konfigureras
+  (`server.forward-headers-strategy`) innan driftsättning, annars delar alla besökare samma räknare.
 - Valfritt men rekommenderat: **tvåstegsverifiering** för Admin-kontot.
 - **Engångskoder** används för ett kontos första lösenord och som reservväg. Admin-kontots
   första kod skrivs i serverns logg när appen startar. Koder för Dokumenterare-kontot, och

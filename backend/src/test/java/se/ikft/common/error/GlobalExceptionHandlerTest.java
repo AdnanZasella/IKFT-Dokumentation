@@ -94,6 +94,28 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
+	void tooManyRequestsExceptionGer429MedRetryAfter() throws Exception {
+		mockMvc.perform(get("/api/v1/test/for-manga/900000"))
+			.andExpect(status().isTooManyRequests())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+				.string("Retry-After", "900"))
+			.andExpect(jsonPath("$.status").value(429))
+			.andExpect(jsonPath("$.detail").value("För många försök."));
+	}
+
+	@Test
+	void retryAfterRundasUppatTillHelaSekunder() throws Exception {
+		mockMvc.perform(get("/api/v1/test/for-manga/899001"))
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+				.string("Retry-After", "900"));
+		// Aldrig 0, som skulle få klienten att försöka direkt igen.
+		mockMvc.perform(get("/api/v1/test/for-manga/0"))
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+				.string("Retry-After", "1"));
+	}
+
+	@Test
 	void ovantatFelGer500UtanDetaljer() throws Exception {
 		mockMvc.perform(get("/api/v1/test/krasch"))
 			.andExpect(status().isInternalServerError())
@@ -215,6 +237,11 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/api/v1/test/konflikt")
 		String konflikt() {
 			throw new ConflictException("Finns redan.");
+		}
+
+		@GetMapping("/api/v1/test/for-manga/{millis}")
+		String forManga(@org.springframework.web.bind.annotation.PathVariable long millis) {
+			throw new TooManyRequestsException("För många försök.", java.time.Duration.ofMillis(millis));
 		}
 
 		@GetMapping("/api/v1/test/krasch")

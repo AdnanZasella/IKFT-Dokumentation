@@ -157,7 +157,7 @@ avstämd.
 
 | Metod & path | Roll | Beskrivning |
 |---|---|---|
-| `POST /auth/login` | öppen | Loggar in, sätter HttpOnly-cookie. Begränsat antal försök. |
+| `POST /auth/login` | öppen | Loggar in, sätter HttpOnly-cookies. Efter 5 misslyckade försök per användarnamn eller IP-adress spärras inloggningen i 15 minuter (konfigurerbart) och ger 429 med `Retry-After`. |
 | `POST /auth/logout` | öppen (kräver CSRF-token) | Rensar åtkomst- och förnyelsecookien. Öppen så att den som har en utgången åtkomsttoken också kan logga ut. |
 | `POST /auth/refresh` | öppen (kräver förnyelsecookie och CSRF-token) | Ger en ny åtkomsttoken om förnyelsetoken är giltig och har aktuell tokenversion, annars 401. Förnyelsetoken byts inte ut. |
 | `GET /auth/me` | inloggad | Kontots roll och innehavarens namn. |

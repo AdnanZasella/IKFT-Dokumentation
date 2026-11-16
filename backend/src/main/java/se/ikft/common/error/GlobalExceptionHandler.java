@@ -77,6 +77,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
 	}
 
+	/** Svaret säger hur länge klienten ska vänta, avrundat uppåt till hela sekunder. */
+	@ExceptionHandler(TooManyRequestsException.class)
+	ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException ex) {
+		long seconds = Math.max(1, (ex.getRetryAfter().toMillis() + 999) / 1000);
+		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+			.header(HttpHeaders.RETRY_AFTER, Long.toString(seconds))
+			.body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+	}
+
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
 		// Databasens meddelande skickas inte till klienten.
