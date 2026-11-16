@@ -180,7 +180,8 @@ class AdminSetupCodeInitializerTest {
 		boolean stangd;
 
 		Aterstallning() {
-			super(accounts, setupCodes, new AuthProperties(Duration.ofHours(24), 12, true), null);
+			super(accounts, setupCodes, new AuthProperties(Duration.ofHours(24), 12, true, 5, Duration.ofMinutes(15)),
+					null);
 		}
 
 		@Override

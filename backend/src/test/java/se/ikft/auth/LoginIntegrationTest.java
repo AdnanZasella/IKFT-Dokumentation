@@ -61,6 +61,10 @@ class LoginIntegrationTest {
 	@Autowired
 	UserAccountRepository accounts;
 
+	/** Rensas, så att de många felförsöken här inte spärrar varandra. Spärren testas i en egen klass. */
+	@Autowired
+	LoginAttemptLimiter limiter;
+
 	/** Svaret på ett fel lösenord. Alla andra inloggningsfel ska ge exakt samma svar. */
 	private String felLosenordSvar;
 
@@ -74,6 +78,7 @@ class LoginIntegrationTest {
 
 	@AfterEach
 	void aterstall() {
+		limiter.clear();
 		jdbc.sql("UPDATE user_account SET password_hash = NULL, token_version = 0, holder_member_id = NULL").update();
 		jdbc.sql("DELETE FROM member").update();
 	}
@@ -228,6 +233,7 @@ class LoginIntegrationTest {
 	}
 
 	private String felsvar(String username, String password) throws Exception {
+		limiter.clear();
 		return login(username, password).andExpect(status().isUnauthorized())
 			.andReturn()
 			.getResponse()

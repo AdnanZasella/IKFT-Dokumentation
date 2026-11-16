@@ -21,7 +21,29 @@ class AuthPropertiesTest {
 			assertThat(properties.setupCodeValidity()).isEqualTo(Duration.ofHours(24));
 			assertThat(properties.passwordMinLength()).isEqualTo(12);
 			assertThat(properties.resetAdminPassword()).isFalse();
+			assertThat(properties.loginMaxAttempts()).isEqualTo(5);
+			assertThat(properties.loginLockout()).isEqualTo(Duration.ofMinutes(15));
 		});
+	}
+
+	@Test
+	void konfigureradeSparrvardenGaller() {
+		runner.withPropertyValues("ikft.auth.login-max-attempts=3", "ikft.auth.login-lockout=1h").run(context -> {
+			AuthProperties properties = context.getBean(AuthProperties.class);
+			assertThat(properties.loginMaxAttempts()).isEqualTo(3);
+			assertThat(properties.loginLockout()).isEqualTo(Duration.ofHours(1));
+		});
+	}
+
+	@Test
+	void nollForsokStopparUppstarten() {
+		runner.withPropertyValues("ikft.auth.login-max-attempts=0")
+			.run(context -> assertThat(context).hasFailed());
+	}
+
+	@Test
+	void sparrtidUnderEnMinutStopparUppstarten() {
+		runner.withPropertyValues("ikft.auth.login-lockout=30s").run(context -> assertThat(context).hasFailed());
 	}
 
 	@Test
