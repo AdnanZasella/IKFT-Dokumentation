@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import se.ikft.account.UserAccount;
 import se.ikft.account.UserAccountRepository;
+import se.ikft.common.error.TooManyRequestsException;
 import se.ikft.security.AccessTokens;
 import se.ikft.security.RefreshTokens;
 
@@ -27,6 +28,9 @@ class LoginService {
 	 * inte avslöjar vilket fel det var.
 	 */
 	static final String INVALID_CREDENTIALS = "Fel användarnamn eller lösenord.";
+
+	/** Svaret under en spärr. Avslöjar inte om kontot finns eller vilken spärr som slog till. */
+	static final String BLOCKED = "För många inloggningsförsök. Försök igen senare.";
 
 	/** Svaret när förnyelsetoken saknas eller inte längre gäller. */
 	static final String INVALID_SESSION = "Sessionen har gått ut. Logga in igen.";
@@ -44,6 +48,8 @@ class LoginService {
 
 	private final RefreshTokens refreshTokens;
 
+	private final LoginAttemptLimiter limiter;
+
 	private final AccountInfoService accountInfo;
 
 	/**
@@ -53,11 +59,12 @@ class LoginService {
 	private final String dummyHash;
 
 	LoginService(UserAccountRepository accounts, PasswordEncoder passwordEncoder, AccessTokens accessTokens,
-			RefreshTokens refreshTokens, AccountInfoService accountInfo) {
+			RefreshTokens refreshTokens, LoginAttemptLimiter limiter, AccountInfoService accountInfo) {
 		this.accounts = accounts;
 		this.passwordEncoder = passwordEncoder;
 		this.accessTokens = accessTokens;
 		this.refreshTokens = refreshTokens;
+		this.limiter = limiter;
 		this.accountInfo = accountInfo;
 		this.dummyHash = passwordEncoder.encode(UNUSABLE_PASSWORD);
 	}
@@ -73,7 +80,13 @@ class LoginService {
 	 * Körs utan transaktion, så att ingen databasanslutning hålls medan lösenordet jämförs. Kontot
 	 * läses i en egen kort transaktion.
 	 */
-	public LoginResult login(String username, String password) {
+	public LoginResult login(String username, String password, String address) {
+		// Före allt annat, så att inte ens rätt lösenord släpps in under en spärr, och så att svaret är
+		// detsamma oavsett om kontot finns.
+		limiter.blockedFor(username, address).ifPresent(wait -> {
+			log.warn("Inloggning nekades eftersom den är spärrad.");
+			throw new TooManyRequestsException(BLOCKED, wait);
+		});
 		Optional<UserAccount> found = isPossibleUsername(username) ? accounts.findByUsername(username)
 				: Optional.empty();
 		Optional<UserAccount> withPassword = found.filter(UserAccount::hasPassword);
@@ -85,8 +98,10 @@ class LoginService {
 				withPassword.map(UserAccount::getPasswordHash).orElse(dummyHash));
 		if (!usable || !matches || withPassword.isEmpty()) {
 			logFailure(found);
+			limiter.recordFailure(username, address);
 			throw new BadCredentialsException(INVALID_CREDENTIALS);
 		}
+		limiter.recordSuccess(username);
 		UserAccount account = withPassword.get();
 		log.info("Inloggning lyckades för {}.", account.getUsername());
 		return new LoginResult(accessTokens.issue(account), refreshTokens.issue(account), accountInfo.get(account));
