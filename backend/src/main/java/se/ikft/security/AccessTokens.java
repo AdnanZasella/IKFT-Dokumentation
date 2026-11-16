@@ -1,6 +1,7 @@
 package se.ikft.security;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -27,6 +28,13 @@ public class AccessTokens {
 
 	static final String TOKEN_VERSION_CLAIM = "token_version";
 
+	/** Skiljer åtkomsttoken från förnyelsetoken, så att den ena inte kan användas som den andra. */
+	static final String TOKEN_USE_CLAIM = "token_use";
+
+	static final String ACCESS_USE = "access";
+
+	static final String REFRESH_USE = "refresh";
+
 	private final JwtEncoder encoder;
 
 	private final JwtProperties properties;
@@ -45,21 +53,36 @@ public class AccessTokens {
 	 * eftersom rollen läses från databasen vid varje anrop.
 	 */
 	public ResponseCookie issue(UserAccount account) {
+		return cookie(COOKIE_NAME, "/", encode(account, ACCESS_USE, properties.validity()), properties.validity());
+	}
+
+	/** En cookie som får webbläsaren att ta bort inloggningscookien. */
+	public ResponseCookie clear() {
+		return cookie(COOKIE_NAME, "/", "", Duration.ZERO);
+	}
+
+	/** Signerar en token för kontot. Används också för förnyelsetoken, se {@link RefreshTokens}. */
+	String encode(UserAccount account, String use, Duration validity) {
 		Instant now = clock.instant();
 		JwtClaimsSet claims = JwtClaimsSet.builder()
 			.subject(account.getId().toString())
 			.claim(TOKEN_VERSION_CLAIM, account.getTokenVersion())
+			.claim(TOKEN_USE_CLAIM, use)
 			.issuedAt(now)
-			.expiresAt(now.plus(properties.validity()))
+			.expiresAt(now.plus(validity))
 			.build();
 		JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-		String token = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-		return ResponseCookie.from(COOKIE_NAME, token)
+		return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+	}
+
+	/** Samma attribut för alla cookies med token, så att de inte kan skilja sig åt. */
+	static ResponseCookie cookie(String name, String path, String value, Duration maxAge) {
+		return ResponseCookie.from(name, value)
 			.httpOnly(true)
 			.secure(true)
 			.sameSite("Strict")
-			.path("/")
-			.maxAge(properties.validity())
+			.path(path)
+			.maxAge(maxAge)
 			.build();
 	}
 

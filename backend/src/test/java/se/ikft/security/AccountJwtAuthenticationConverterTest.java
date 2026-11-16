@@ -67,6 +67,19 @@ class AccountJwtAuthenticationConverterTest {
 	}
 
 	@Test
+	void forneyelsetokenOchTokenUtanAnvandningAvvisasSomAtkomsttoken() {
+		UUID id = UUID.randomUUID();
+		konto(id, Role.ADMIN, 0);
+
+		assertThatThrownBy(() -> converter.convert(jwt(id.toString(), 0L, AccessTokens.REFRESH_USE)))
+			.isInstanceOf(InvalidBearerTokenException.class);
+		assertThatThrownBy(() -> converter.convert(jwt(id.toString(), 0L, null)))
+			.isInstanceOf(InvalidBearerTokenException.class);
+		assertThatThrownBy(() -> converter.convert(jwt(id.toString(), 0L, "något-annat")))
+			.isInstanceOf(InvalidBearerTokenException.class);
+	}
+
+	@Test
 	void subjectSomInteArEttIdAvvisas() {
 		assertThatThrownBy(() -> converter.convert(jwt("admin", 0))).isInstanceOf(InvalidBearerTokenException.class);
 	}
@@ -92,11 +105,20 @@ class AccountJwtAuthenticationConverterTest {
 	}
 
 	private static Jwt jwt(String subject, Object tokenVersion) {
+		return jwt(subject, tokenVersion, AccessTokens.ACCESS_USE);
+	}
+
+	private static Jwt jwt(String subject, Object tokenVersion, String use) {
 		Instant nu = Instant.parse("2026-10-12T10:00:00Z");
 		return Jwt.withTokenValue("token")
 			.header("alg", "HS256")
 			.subject(subject)
 			.claim(AccessTokens.TOKEN_VERSION_CLAIM, tokenVersion)
+			.claims(claims -> {
+				if (use != null) {
+					claims.put(AccessTokens.TOKEN_USE_CLAIM, use);
+				}
+			})
 			.issuedAt(nu)
 			.expiresAt(nu.plusSeconds(60))
 			.build();
