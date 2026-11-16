@@ -9,7 +9,17 @@ verksamhetsregler, roller eller API.
 
 - `backend/` – Spring Boot 4.1.1, Java 21, Maven, paket `se.ikft`.
 - `docs/` – specifikationen, uppdelad i sju filer.
+- `design/` – förebild och material för hemsidans utseende (skärmbilder, logotyp, texter). Mappen är
+  publik, så inget där får vara privat. Behövs först i fas 4.
 - Frontend (publik hemsida och admin-app) finns inte än.
+
+## Läget
+
+Fas 1 pågår. Färdigt: grunden, engångskoder, inloggning, medlemsregister (med föreningsroller och
+moskéavgift via FIFS) och ändringslogg. Återstår: se issue #31 (ordning för Fas 1) och
+[Öppna frågor](docs/06-oppna-fragor.md). Flaggan för betald avgift gäller än så länge bara moskéavgiften
+via FIFS. Föreningens egen medlemsavgift läggs till när medlemskapet är bestämt. Ändringsloggen sparar
+bara födelsedatum, hemkommun och status med värden, övriga fält bara som ändrade.
 
 Backend är uppdelad i paket per funktion under `se.ikft`. Varje paket har en `package-info.java`
 som beskriver vad paketet ansvarar för:
@@ -29,6 +39,11 @@ Kör i `backend/`:
 - `./mvnw spring-boot:run` – starta lokalt
 - `./mvnw test` – kör tester
 - `./mvnw verify` – bygg och testa
+
+På Windows kan `JAVA_HOME` saknas i skalet. Sätt den till en JDK 21, t.ex.
+`export JAVA_HOME=/c/Users/<namn>/.jdks/ms-21.0.13.0.2`. Efter att en migrering har bytt namn eller tagits
+bort ska bygget köras med `./mvnw clean verify`, annars ligger den gamla filen kvar i `target/` och Flyway
+hittar två migreringar med samma version.
 
 Docker krävs. Lokalt startar `spring-boot-docker-compose` Postgres 18 från `compose.yaml`,
 och testerna använder Testcontainers.
@@ -51,6 +66,25 @@ och testerna använder Testcontainers.
   inte hårdkodade.
 - Dataminimering: lagra födelsedatum, aldrig personnummer. Medlemmar inaktiveras, de raderas inte.
 - Artikeltext saneras i backend innan den sparas.
+
+## Tester
+
+- Ingen funktion är klar utan tester på rätt nivå. En buggfix börjar med ett test som misslyckas.
+- Enhetstester (JUnit 5, AssertJ) för ren logik utan Spring och databas, t.ex. bidragsberäkning,
+  engångskoder och tidslogik med fast `Clock`.
+- Integrationstester (`@SpringBootTest`, MockMvc, Testcontainers) för varje endpoint. Varje endpoint
+  testas minst för lyckat fall, valideringsfel, 401 och 403 för fel roll. Använd `TestCsrf.csrfToken()`
+  för muterande anrop.
+- Bidragsregler testas med gränsvärden (59/60 minuter, 2/3 deltagare, ålder 6/7/25/26).
+- Playwright (E2E) läggs i `e2e/` när admin-appen har en första sida. Håll antalet E2E-tester litet
+  och täck bara de viktigaste flödena.
+- Testdata är påhittad, aldrig riktiga personer.
+- Integrationstester som skriver till databasen städar själva. Ordningen vid städning är
+  `audit_log_change`, `audit_log`, `member_fifs_fee`, `member_role`, `member`, annars stoppar
+  främmande nycklar raderingen. Testkontexten delas, så ett test som lämnar rader kvar kan fälla ett annat.
+- Ändringsloggen skrivs med `AuditService.record(...)` i samma transaktion som ändringen. Anropet kräver
+  en pågående transaktion. Ändringar som inte ändrar något, och misslyckade anrop, ska inte loggas.
+- `./mvnw verify` skriver täckningsrapport (JaCoCo) till `backend/target/site/jacoco/`. Ingen hård gräns.
 
 ## Docs
 
