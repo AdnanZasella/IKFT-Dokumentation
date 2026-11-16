@@ -30,6 +30,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import se.ikft.TestcontainersConfiguration;
 import se.ikft.security.AccessTokens;
@@ -58,6 +60,9 @@ class AuditIntegrationTest {
 
 	@Autowired
 	AuditService auditService;
+
+	@Autowired
+	PlatformTransactionManager transactionManager;
 
 	Cookie admin;
 
@@ -309,6 +314,36 @@ class AuditIntegrationTest {
 				List.of(FieldChange.named("firstName")))).isInstanceOf(IllegalTransactionStateException.class);
 
 		assertThat(jdbc.sql("SELECT count(*) FROM audit_log").query(Long.class).single()).isZero();
+	}
+
+	@Test
+	void rullasAndringenTillbakaSkrivsIngenLoggpost() {
+		TransactionTemplate transaktion = new TransactionTemplate(transactionManager);
+
+		assertThatThrownBy(() -> transaktion.executeWithoutResult(status -> {
+			auditService.record(AuditEntity.MEMBER, UUID.randomUUID(), AuditAction.CREATED,
+					List.of(FieldChange.withValues("status", null, "ACTIVE")));
+			throw new IllegalStateException("Ändringen misslyckas efter loggningen.");
+		})).isInstanceOf(IllegalStateException.class);
+
+		assertThat(jdbc.sql("SELECT count(*) FROM audit_log").query(Long.class).single()).isZero();
+		assertThat(jdbc.sql("SELECT count(*) FROM audit_log_change").query(Long.class).single()).isZero();
+	}
+
+	@Test
+	void enLoggpostSomSkrivsIEnTransaktionSparasMedFaltenOchUtanKonto() {
+		UUID id = UUID.randomUUID();
+
+		new TransactionTemplate(transactionManager).executeWithoutResult(status -> auditService.record(
+				AuditEntity.MEMBER, id, AuditAction.UPDATED, List.of(FieldChange.withValues("status", "ACTIVE", "INACTIVE"))));
+
+		assertThat(jdbc.sql("SELECT count(*) FROM audit_log WHERE entity_id = ? AND account_id IS NULL")
+			.param(id)
+			.query(Long.class)
+			.single()).isEqualTo(1);
+		assertThat(jdbc.sql("SELECT before_value || '>' || after_value FROM audit_log_change")
+			.query(String.class)
+			.single()).isEqualTo("ACTIVE>INACTIVE");
 	}
 
 	@Test
