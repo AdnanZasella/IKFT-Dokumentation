@@ -66,6 +66,10 @@ och testerna använder Testcontainers.
   inte hårdkodade.
 - Dataminimering: lagra födelsedatum, aldrig personnummer. Medlemmar inaktiveras, de raderas inte.
 - Artikeltext saneras i backend innan den sparas.
+- Text i JSON-förfrågningar med kontrolltecken (t.ex. NUL) avvisas med 400 redan när JSON läses
+  (`common.config.JsonConfig`), utom radbrytning, vagnretur och tabb. `GlobalExceptionHandler` ger 400
+  bara för SQLSTATE 22021, 22P05 och 22001. Andra fel i klass 22 är serverfel (500, loggas på ERROR).
+  Gäller inte parametrar i URL:en.
 
 ## Tester
 

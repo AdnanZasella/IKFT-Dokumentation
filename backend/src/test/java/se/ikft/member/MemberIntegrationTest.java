@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static se.ikft.security.TestCsrf.csrfToken;
@@ -135,6 +136,18 @@ class MemberIntegrationTest {
 				""").andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors[?(@.field == 'firstName')]").exists())
 			.andExpect(jsonPath("$.errors[?(@.field == 'lastName')]").exists());
+	}
+
+	@Test
+	void kontrolltecknIFaltAvvisasMed400OchSparasInte() throws Exception {
+		// Avvisas när JSON läses. Databasen, som inte godtar NUL, är bara sista skyddet.
+		perform(post("/api/v1/members"), admin, medlem("Pro\\u0000va", "Provsson", "2010-05-01"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+		perform(post("/api/v1/members"), admin, medlem("Prova", "Provs\\u0007son", "2010-05-01"))
+			.andExpect(status().isBadRequest());
+
+		assertThat(jdbc.sql("SELECT count(*) FROM member").query(Long.class).single()).isZero();
 	}
 
 	@Test
