@@ -161,6 +161,7 @@ avstämd.
 | `POST /auth/logout` | öppen (kräver CSRF-token) | Rensar åtkomst- och förnyelsecookien. Öppen så att den som har en utgången åtkomsttoken också kan logga ut. |
 | `POST /auth/refresh` | öppen (kräver förnyelsecookie och CSRF-token) | Ger en ny åtkomsttoken om förnyelsetoken är giltig och har aktuell tokenversion, annars 401. Förnyelsetoken byts inte ut. |
 | `GET /auth/me` | inloggad | Kontots roll och innehavarens namn. |
+| `POST /auth/change-password` | inloggad | Byter det egna lösenordet. Tar `currentPassword` och `newPassword`, med samma lösenordskrav som `set-password`. Fel nuvarande lösenord eller ett nytt lösenord som är detsamma ger 400, och fel nuvarande lösenord räknas som misslyckade inloggningar (429 efter spärren). Tokenversionen räknas upp så att andra sessioner loggas ut, och svaret sätter nya cookies så att den som bytte förblir inloggad. |
 | `POST /auth/set-password` | öppen (med engångskod) | Sätter lösenordet med en engångskod: ett kontos första lösenord och reservväg om lösenordet glömts bort. |
 
 **Medlemmar — Fas 1**

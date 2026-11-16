@@ -39,9 +39,13 @@ class AuthController {
 
 	private final RefreshTokens refreshTokens;
 
-	AuthController(SetupCodeService setupCodes, LoginService loginService, AccountInfoService accountInfo,
-			CsrfTokens csrfTokens, AccessTokens accessTokens, RefreshTokens refreshTokens) {
+	private final PasswordChangeService passwordChanges;
+
+	AuthController(SetupCodeService setupCodes, LoginService loginService, PasswordChangeService passwordChanges,
+			AccountInfoService accountInfo, CsrfTokens csrfTokens, AccessTokens accessTokens,
+			RefreshTokens refreshTokens) {
 		this.setupCodes = setupCodes;
+		this.passwordChanges = passwordChanges;
 		this.loginService = loginService;
 		this.accountInfo = accountInfo;
 		this.csrfTokens = csrfTokens;
@@ -93,6 +97,21 @@ class AuthController {
 	void logout(HttpServletResponse response) {
 		response.addHeader(HttpHeaders.SET_COOKIE, accessTokens.clear().toString());
 		response.addHeader(HttpHeaders.SET_COOKIE, refreshTokens.clear().toString());
+	}
+
+	/**
+	 * Byter det egna lösenordet. Andra sessioner loggas ut, men den som bytte får nya cookies och förblir
+	 * inloggad. CSRF-token byts, som vid inloggning.
+	 */
+	@PostMapping("/change-password")
+	AccountInfo changePassword(@Valid @RequestBody ChangePasswordRequest request, Authentication authentication,
+			HttpServletRequest httpRequest, HttpServletResponse response) {
+		LoginResult result = passwordChanges.changePassword(CurrentAccount.id(authentication),
+				request.currentPassword(), request.newPassword(), httpRequest.getRemoteAddr());
+		response.addHeader(HttpHeaders.SET_COOKIE, result.cookie().toString());
+		response.addHeader(HttpHeaders.SET_COOKIE, result.refreshCookie().toString());
+		csrfTokens.renew(httpRequest, response);
+		return result.account();
 	}
 
 	/** Öppen, eftersom den som sätter lösenordet inte kan vara inloggad. Kräver en giltig engångskod. */
