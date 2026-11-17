@@ -61,6 +61,16 @@ public class UserAccount {
 		this.updatedAt = now;
 	}
 
+	/**
+	 * Byter innehavare och räknar upp tokenversionen, så att sessioner från före bytet blir ogiltiga.
+	 * Lösenordet behålls.
+	 */
+	void changeHolder(UUID memberId, Instant now) {
+		this.holderMemberId = memberId;
+		this.tokenVersion++;
+		this.updatedAt = now;
+	}
+
 	public boolean hasPassword() {
 		return passwordHash != null;
 	}
