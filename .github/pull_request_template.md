@@ -9,6 +9,7 @@
 ## Hur testat
 
 - [ ] `./mvnw verify` är grönt
+- [ ] Agenten `testgranskare` och `/code-review` är körda, och fynden är åtgärdade eller kommenterade
 - [ ] Manuellt testat: <!-- beskriv vad -->
 
 Closes #

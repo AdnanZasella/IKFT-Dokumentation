@@ -73,3 +73,4 @@ tekniskt mest komplext.
 - [04 – Domänmodell och API](04-domanmodell-och-api.md): arkitektur, stack, domänmodell, endpoints
 - [05 – Säkerhet och GDPR](05-sakerhet-och-gdpr.md): säkerhet, dataskydd, icke-funktionella krav
 - [06 – Öppna frågor](06-oppna-fragor.md): frågor till kommunen och föreningen
+- [07 – Teststrategi](07-teststrategi.md): testnivåer, E2E med Playwright, Claude-agenter och CI
