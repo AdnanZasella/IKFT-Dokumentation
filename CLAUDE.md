@@ -2,13 +2,17 @@
 
 Hemsida och internt dokumentationssystem för Islamiska Kulturföreningen i Trollhättan.
 Specifikationen finns i [docs/00-oversikt.md](docs/00-oversikt.md), som länkar till
-`docs/01-*.md` till `docs/06-*.md`. Läs rätt delfil innan du ändrar något som berör
-verksamhetsregler, roller eller API.
+`docs/01-*.md` till `docs/07-*.md`. Läs rätt delfil innan du ändrar något som berör
+verksamhetsregler, roller eller API. Läs [docs/07-teststrategi.md](docs/07-teststrategi.md) innan du skriver eller
+granskar tester.
 
 ## Struktur
 
 - `backend/` – Spring Boot 4.1.1, Java 21, Maven, paket `se.ikft`.
-- `docs/` – specifikationen, uppdelad i sju filer.
+- `docs/` – specifikationen och teststrategin, uppdelad i åtta filer.
+- `.claude/agents/` – `testgranskare` (granskar att tester finns på rätt nivå, kör före varje PR) och
+  `e2e-utforskare` (tar fram E2E-test med Playwright MCP, först när det finns en frontend). `.mcp.json` har
+  Playwright MCP.
 - `design/` – förebild och material för hemsidans utseende (skärmbilder, logotyp, texter). Mappen är
   publik, så inget där får vara privat. Behövs först i fas 4.
 - Frontend (publik hemsida och admin-app) finns inte än.
@@ -81,7 +85,11 @@ och testerna använder Testcontainers.
   för muterande anrop.
 - Bidragsregler testas med gränsvärden (59/60 minuter, 2/3 deltagare, ålder 6/7/25/26).
 - Playwright (E2E) läggs i `e2e/` när admin-appen har en första sida. Håll antalet E2E-tester litet
-  och täck bara de viktigaste flödena.
+  och täck bara de viktigaste flödena. Valideringsvarianter och rollmatriser testas i backend, inte i webbläsaren.
+  Upplägg, körmiljö och skrivregler (inga `waitForTimeout`, lokaliserare på roll och etikett, egen testdata) finns i
+  [docs/07-teststrategi.md](docs/07-teststrategi.md).
+- Ett test som fallerar ibland är en bugg: undersök orsaken, kör inte bara om.
+- Före varje PR: kör agenten `testgranskare` och `/code-review`. CI ska vara grönt, agenternas svar är bara underlag.
 - Testdata är påhittad, aldrig riktiga personer.
 - Integrationstester som skriver till databasen städar själva. Ordningen vid städning är
   `audit_log_change`, `audit_log`, `member_fifs_fee`, `member_role`, `documenter_assignment`, `member`, annars stoppar

@@ -18,6 +18,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -34,3 +35,15 @@ jobs:
       # Docker finns på ubuntu-latest, så Testcontainers fungerar.
       - name: Bygg och testa
         run: ./mvnw --batch-mode verify
+
+      # Sparas även när något fallerar, så att felet går att läsa utan att köra om lokalt.
+      - name: Spara test- och täckningsrapporter
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-rapporter
+          path: |
+            backend/target/surefire-reports/
+            backend/target/site/jacoco/
+          retention-days: 14
+          if-no-files-found: ignore
