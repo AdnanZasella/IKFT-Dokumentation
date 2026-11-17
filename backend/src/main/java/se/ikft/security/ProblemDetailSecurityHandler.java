@@ -36,13 +36,27 @@ class ProblemDetailSecurityHandler implements AuthenticationEntryPoint, AccessDe
 		write(response, HttpStatus.FORBIDDEN, "Behörighet saknas.");
 	}
 
+	/**
+	 * 403 för ett konto som måste byta lösenord. Svaret har egenskapen {@code mustChangePassword}, så att
+	 * klienten kan skilja det från ett vanligt 403 och skicka användaren till lösenordsbytet.
+	 */
+	void passwordChangeRequired(HttpServletResponse response) throws IOException {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
+				PasswordChangeRequiredFilter.DETAIL);
+		problem.setProperty("mustChangePassword", true);
+		write(response, problem);
+	}
+
 	private void write(HttpServletResponse response, HttpStatus status, String detail) throws IOException {
+		write(response, ProblemDetail.forStatusAndDetail(status, detail));
+	}
+
+	private void write(HttpServletResponse response, ProblemDetail problem) throws IOException {
 		if (response.isCommitted()) {
 			return;
 		}
-		response.setStatus(status.value());
-		converter.write(ProblemDetail.forStatusAndDetail(status, detail), MediaType.APPLICATION_PROBLEM_JSON,
-				new ServletServerHttpResponse(response));
+		response.setStatus(problem.getStatus());
+		converter.write(problem, MediaType.APPLICATION_PROBLEM_JSON, new ServletServerHttpResponse(response));
 	}
 
 }

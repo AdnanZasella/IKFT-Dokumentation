@@ -2,6 +2,8 @@ package se.ikft.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,9 @@ class AdminSetupCodeInitializerTest {
 
 	@Autowired
 	SetupCodeService setupCodes;
+
+	@Autowired
+	Clock clock;
 
 	@BeforeEach
 	@AfterEach
@@ -191,11 +196,15 @@ class AdminSetupCodeInitializerTest {
 
 	}
 
+	/**
+	 * Jämförs mot appens klocka och inte databasens {@code now()}: koden går ut med appens klocka, och
+	 * Docker-VM:ens klocka kan avvika från värdens.
+	 */
 	private long giltigaAdminKoder() {
 		return jdbc.sql("""
 				SELECT count(*) FROM setup_code s JOIN user_account a ON a.id = s.user_account_id
-				WHERE a.username = 'admin' AND s.used_at IS NULL AND s.valid_until > now()
-				""").query(Long.class).single();
+				WHERE a.username = 'admin' AND s.used_at IS NULL AND s.valid_until > :nu
+				""").param("nu", Timestamp.from(clock.instant())).query(Long.class).single();
 	}
 
 }

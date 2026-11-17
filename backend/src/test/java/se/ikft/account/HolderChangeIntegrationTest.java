@@ -81,7 +81,10 @@ class HolderChangeIntegrationTest {
 		jdbc.sql("DELETE FROM audit_log_change").update();
 		jdbc.sql("DELETE FROM audit_log").update();
 		jdbc.sql("DELETE FROM setup_code").update();
-		jdbc.sql("UPDATE user_account SET password_hash = NULL, token_version = 0, holder_member_id = NULL").update();
+		jdbc.sql("""
+				UPDATE user_account SET password_hash = NULL, token_version = 0, holder_member_id = NULL,
+				must_change_password = false
+				""").update();
 		jdbc.sql("DELETE FROM member").update();
 	}
 
@@ -95,6 +98,7 @@ class HolderChangeIntegrationTest {
 		assertThat(holder("dokumenterare")).isEqualTo(ANNA);
 		assertThat(tokenversion("dokumenterare")).isEqualTo(1);
 		assertThat(hash("dokumenterare")).isEqualTo(hashFore);
+		assertThat(mustChangePassword("dokumenterare")).isTrue();
 	}
 
 	@Test
@@ -166,6 +170,7 @@ class HolderChangeIntegrationTest {
 
 		assertThat(holder("admin")).isNull();
 		assertThat(tokenversion("admin")).isZero();
+		assertThat(mustChangePassword("admin")).isFalse();
 		assertThat(antalLoggposter()).isZero();
 	}
 
@@ -186,7 +191,9 @@ class HolderChangeIntegrationTest {
 			.andExpect(problem401());
 		// Lösenordet gäller, så den nya innehavaren kan logga in med det som lämnades över.
 		Cookie nySession = loggaIn("dokumenterare").getCookie(AccessTokens.COOKIE_NAME);
-		me(nySession).andExpect(status().isOk()).andExpect(jsonPath("$.holderName").value("Anna Andersson"));
+		me(nySession).andExpect(status().isOk())
+			.andExpect(jsonPath("$.holderName").value("Anna Andersson"))
+			.andExpect(jsonPath("$.mustChangePassword").value(true));
 		// Admin berörs inte.
 		me(adminSession).andExpect(status().isOk());
 		assertThat(tokenversion("admin")).isZero();
@@ -217,6 +224,13 @@ class HolderChangeIntegrationTest {
 		return jdbc.sql("SELECT token_version FROM user_account WHERE username = ?")
 			.param(username)
 			.query(Integer.class)
+			.single();
+	}
+
+	private boolean mustChangePassword(String username) {
+		return jdbc.sql("SELECT must_change_password FROM user_account WHERE username = ?")
+			.param(username)
+			.query(Boolean.class)
 			.single();
 	}
 

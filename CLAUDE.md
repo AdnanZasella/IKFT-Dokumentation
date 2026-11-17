@@ -19,8 +19,11 @@ granskar tester.
 
 ## Läget
 
-Fas 1 pågår. Färdigt: grunden, engångskoder, inloggning, medlemsregister (med föreningsroller och
-moskéavgift via FIFS) och ändringslogg. Återstår: se issue #31 (ordning för Fas 1) och
+Fas 1 pågår. Färdigt: grunden, engångskoder, inloggning (med utloggning, förnyelse, spärr mot gissning och
+byte av eget lösenord), medlemsregister (med föreningsroller och moskéavgift via FIFS), ändringslogg,
+dokumenteraruppdrag (modell och `GET /documenter-assignment/current`), innehavarbyte (`HolderChangeService`) och
+tvingat lösenordsbyte efter ett innehavarbyte. Återstår: att utse dokumenterare (ordinarie och tillfällig) med
+endpoints, och behörighetsmatrisen. Se issue #31 (ordning för Fas 1) och
 [Öppna frågor](docs/06-oppna-fragor.md). Flaggan för betald avgift gäller än så länge bara moskéavgiften
 via FIFS. Föreningens egen medlemsavgift läggs till när medlemskapet är bestämt. Ändringsloggen sparar
 bara födelsedatum, hemkommun och status med värden, övriga fält bara som ändrade.

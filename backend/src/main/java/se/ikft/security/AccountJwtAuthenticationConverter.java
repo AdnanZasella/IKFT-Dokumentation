@@ -1,11 +1,14 @@
 package se.ikft.security;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -32,9 +35,13 @@ class AccountJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthen
 			.filter(found -> AccessTokens.ACCESS_USE.equals(jwt.getClaimAsString(AccessTokens.TOKEN_USE_CLAIM)))
 			.filter(found -> tokenVersion(jwt) == found.getTokenVersion())
 			.orElseThrow(() -> new InvalidBearerTokenException("Token gäller inte längre."));
-		// Rollen tas från databasen, inte från token.
-		return new JwtAuthenticationToken(jwt, List.of(CurrentAccount.authority(account.getRole())),
-				account.getId().toString());
+		// Rollen och flaggan för tvingat lösenordsbyte tas från databasen, inte från token.
+		List<GrantedAuthority> authorities = new ArrayList<>();
+		authorities.add(CurrentAccount.authority(account.getRole()));
+		if (account.isMustChangePassword()) {
+			authorities.add(new SimpleGrantedAuthority(CurrentAccount.PASSWORD_CHANGE_REQUIRED));
+		}
+		return new JwtAuthenticationToken(jwt, authorities, account.getId().toString());
 	}
 
 	private static Optional<UUID> accountId(Jwt jwt) {
