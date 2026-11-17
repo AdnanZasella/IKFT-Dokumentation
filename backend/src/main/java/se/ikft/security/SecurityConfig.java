@@ -126,6 +126,7 @@ public class SecurityConfig {
 				.hasAnyRole("ADMIN", "DOCUMENTER")
 				.requestMatchers("/api/v1/documenter-assignment", "/api/v1/documenter-assignment/**")
 				.hasRole("ADMIN")
+				.requestMatchers("/api/v1/accounts/**").hasRole("ADMIN")
 				.requestMatchers("/api/v1/**").authenticated()
 				.anyRequest().denyAll())
 			.exceptionHandling(exceptions -> exceptions
