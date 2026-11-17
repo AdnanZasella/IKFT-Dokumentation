@@ -161,6 +161,10 @@ class BehorighetsmatrisIntegrationTest {
 
 	@BeforeAll
 	void forbered() throws Exception {
+		// Ett kvarlämnat tillfälligt uppdrag skulle avslutas av Admins DELETE, och en kvarlämnad flagga skulle ge
+		// Dokumenterare 403 överallt.
+		jdbc.sql("DELETE FROM documenter_assignment").update();
+		jdbc.sql("UPDATE user_account SET must_change_password = false").update();
 		jdbc.sql("UPDATE user_account SET password_hash = ?").param(passwordEncoder.encode(LOSENORD)).update();
 		admin = loggaIn("admin");
 		dokumenterare = loggaIn("dokumenterare");
