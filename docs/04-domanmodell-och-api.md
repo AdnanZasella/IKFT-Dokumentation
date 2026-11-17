@@ -180,7 +180,7 @@ avstämd.
 
 | Metod & path | Roll | Beskrivning |
 |---|---|---|
-| `GET /documenter-assignment/current` | Admin, Dokumenterare | Aktiv dokumenterare (eller att inget är satt). |
+| `GET /documenter-assignment/current` | Admin, Dokumenterare | Aktiv dokumenterare (`memberId`, `memberName`, `type` ORDINARY/TEMPORARY och `endDate`, sista dagen uppdraget gäller), eller `assigned: false` om inget är satt. Ett tillfälligt uppdrag går före ett ordinarie, och ett ordinarie gäller som längst till och med 31 december samma år. För Admin följer också `nextYearAssigned` (ett ordinarie uppdrag finns för någon del av nästa år) och `reminder` (nästa år är inte utsett och påminnelsedatumet, som standard 1 december, har passerats, `ikft.assignment.reminder-from`). |
 | `POST /documenter-assignment` | Admin | Utse ordinarie dokumenterare (loggar ut kontot, kräver lösenordsbyte vid nästa inloggning). |
 | `POST /documenter-assignment/temporary` | Admin | Utse tillfällig dokumenterare med slutdatum. |
 | `DELETE /documenter-assignment/temporary` | Admin | Avsluta tillfälligt uppdrag i förtid. |
