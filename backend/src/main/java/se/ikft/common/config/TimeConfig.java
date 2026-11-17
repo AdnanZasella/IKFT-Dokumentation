@@ -13,8 +13,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 public class TimeConfig {
 
+	/** Tidszonens namn som konstant, för annoteringar som {@code @Scheduled(zone = ...)}. */
+	public static final String ZONE_ID = "Europe/Stockholm";
+
 	/** Föreningens tidszon. Årsskifte och datum räknas alltid i denna. */
-	public static final ZoneId ZONE = ZoneId.of("Europe/Stockholm");
+	public static final ZoneId ZONE = ZoneId.of(ZONE_ID);
 
 	@Bean
 	Clock clock() {
