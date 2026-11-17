@@ -34,6 +34,9 @@ public class UserAccount {
 
 	private UUID holderMemberId;
 
+	/** Sätts när innehavaren byts och nollställs när lösenordet byts. */
+	private boolean mustChangePassword;
+
 	private Instant createdAt;
 
 	private Instant updatedAt;
@@ -43,10 +46,11 @@ public class UserAccount {
 
 	/**
 	 * Sätter ett nytt lösenord och räknar upp tokenversionen så att sessioner från före bytet blir
-	 * ogiltiga.
+	 * ogiltiga. Kontot behöver inte längre byta lösenord.
 	 */
 	public void changePassword(String passwordHash, Instant now) {
 		this.passwordHash = passwordHash;
+		this.mustChangePassword = false;
 		this.tokenVersion++;
 		this.updatedAt = now;
 	}
@@ -63,10 +67,11 @@ public class UserAccount {
 
 	/**
 	 * Byter innehavare och räknar upp tokenversionen, så att sessioner från före bytet blir ogiltiga.
-	 * Lösenordet behålls.
+	 * Lösenordet behålls, men den nya innehavaren måste byta det vid första inloggningen.
 	 */
 	void changeHolder(UUID memberId, Instant now) {
 		this.holderMemberId = memberId;
+		this.mustChangePassword = true;
 		this.tokenVersion++;
 		this.updatedAt = now;
 	}
@@ -97,6 +102,10 @@ public class UserAccount {
 
 	public UUID getHolderMemberId() {
 		return holderMemberId;
+	}
+
+	public boolean isMustChangePassword() {
+		return mustChangePassword;
 	}
 
 	public Instant getCreatedAt() {

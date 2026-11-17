@@ -21,15 +21,15 @@ class AccountInfoService {
 	}
 
 	/**
-	 * Kontot och rollen kommer från inloggningen, som redan har läst kontot. Därför hämtas bara
-	 * innehavarens namn.
+	 * Kontot, rollen och flaggan för tvingat lösenordsbyte kommer från inloggningen, som redan har läst
+	 * kontot. Därför hämtas bara innehavarens namn.
 	 */
-	public AccountInfo get(UUID accountId, Role role) {
-		return new AccountInfo(role, accounts.findHolderName(accountId).orElse(null));
+	public AccountInfo get(UUID accountId, Role role, boolean mustChangePassword) {
+		return new AccountInfo(role, accounts.findHolderName(accountId).orElse(null), mustChangePassword);
 	}
 
 	public AccountInfo get(UserAccount account) {
-		return get(account.getId(), account.getRole());
+		return get(account.getId(), account.getRole(), account.isMustChangePassword());
 	}
 
 }

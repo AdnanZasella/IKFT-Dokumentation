@@ -16,7 +16,17 @@ public final class CurrentAccount {
 
 	private static final String ROLE_PREFIX = "ROLE_";
 
+	/** Finns bara när kontot måste byta lösenord. Är ingen roll, så den ger ingen behörighet. */
+	static final String PASSWORD_CHANGE_REQUIRED = "PASSWORD_CHANGE_REQUIRED";
+
 	private CurrentAccount() {
+	}
+
+	/** Om kontot måste byta lösenord innan något annat är tillåtet. */
+	public static boolean mustChangePassword(Authentication authentication) {
+		return authentication.getAuthorities()
+			.stream()
+			.anyMatch(authority -> PASSWORD_CHANGE_REQUIRED.equals(authority.getAuthority()));
 	}
 
 	public static UUID id(Authentication authentication) {

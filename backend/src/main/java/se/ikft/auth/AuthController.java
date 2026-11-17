@@ -56,7 +56,8 @@ class AuthController {
 	/** Det inloggade kontot. */
 	@GetMapping("/me")
 	AccountInfo me(Authentication authentication) {
-		return accountInfo.get(CurrentAccount.id(authentication), CurrentAccount.role(authentication));
+		return accountInfo.get(CurrentAccount.id(authentication), CurrentAccount.role(authentication),
+				CurrentAccount.mustChangePassword(authentication));
 	}
 
 	/**

@@ -7,6 +7,8 @@ import se.ikft.account.Role;
  *
  * @param role kontots roll
  * @param holderName innehavarens namn, eller {@code null} om kontot saknar innehavare
+ * @param mustChangePassword om lösenordet måste bytas innan något annat är tillåtet, det vill säga efter ett
+ *            innehavarbyte
  */
-record AccountInfo(Role role, String holderName) {
+record AccountInfo(Role role, String holderName, boolean mustChangePassword) {
 }

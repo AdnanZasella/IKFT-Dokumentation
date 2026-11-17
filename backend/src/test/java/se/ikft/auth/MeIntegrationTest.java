@@ -59,7 +59,8 @@ class MeIntegrationTest {
 	void adminUtanInnehavare() throws Exception {
 		me("admin").andExpect(status().isOk())
 			.andExpect(jsonPath("$.role").value("ADMIN"))
-			.andExpect(jsonPath("$.holderName").isEmpty());
+			.andExpect(jsonPath("$.holderName").isEmpty())
+			.andExpect(jsonPath("$.mustChangePassword").value(false));
 	}
 
 	@Test

@@ -113,6 +113,9 @@ public class SecurityConfig {
 			.logout(AbstractHttpConfigurer::disable)
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.addFilter(cookieAuthenticationFilter(jwtDecoder, accounts, problemHandler))
+			// Ett konto som måste byta lösenord får bara se vem som är inloggad och byta lösenord. Spärren
+			// sitter före rollkontrollerna, så den gäller varje adress, även de som läggs till senare.
+			.addFilterAfter(new PasswordChangeRequiredFilter(problemHandler), BearerTokenAuthenticationFilter.class)
 			.authorizeHttpRequests(auth -> auth
 				// Felsidan svarar med ProblemDetail, se ProblemDetailErrorController.
 				.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()

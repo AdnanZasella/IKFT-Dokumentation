@@ -55,6 +55,9 @@ class AccountSetupCodeIntegrationTest {
 	@Autowired
 	PasswordEncoder passwordEncoder;
 
+	@Autowired
+	java.time.Clock clock;
+
 	Cookie admin;
 
 	Cookie dokumenterare;
@@ -144,8 +147,12 @@ class AccountSetupCodeIntegrationTest {
 		String gammal = kod(skapa(admin, kontoId("dokumenterare")));
 		String ny = kod(skapa(admin, kontoId("dokumenterare")));
 
-		assertThat(jdbc.sql("SELECT count(*) FROM setup_code WHERE valid_until > now()").query(Long.class).single())
-			.isEqualTo(1);
+		// Mot appens klocka och inte databasens now(): koden går ut med appens klocka, och Docker-VM:ens klocka kan
+		// avvika från värdens.
+		assertThat(jdbc.sql("SELECT count(*) FROM setup_code WHERE valid_until > :nu")
+			.param("nu", java.sql.Timestamp.from(clock.instant()))
+			.query(Long.class)
+			.single()).isEqualTo(1);
 		mockMvc
 			.perform(post("/api/v1/auth/set-password").with(csrfToken())
 				.contentType(MediaType.APPLICATION_JSON)

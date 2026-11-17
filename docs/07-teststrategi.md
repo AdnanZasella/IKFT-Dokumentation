@@ -33,8 +33,13 @@ gränsvärden och rollmatriser testas i backend, inte i webbläsaren.
   som lämnar rader kvar kan fälla ett annat.
 - **Täckning:** JaCoCo rapporterar men har ingen hård gräns. Siffran är ett verktyg för att hitta luckor, inte
   ett mål. Vid införandet var den 97 % för instruktioner och 91 % för grenar.
-- **Ett test som fallerar ibland är en bugg**, inte något att köra om. Undersök orsaken. Hittills observerat en
-  gång och inte återskapat: `AdminSetupCodeInitializerTest.aterstallningErsatterTidigareKod`.
+- **Ett test som fallerar ibland är en bugg**, inte något att köra om. Undersök orsaken.
+- **Tid i databastester:** jämför aldrig appens tidpunkter med databasens `now()` utan marginal. Appen skriver med
+  den injicerade `Clock`, och Docker-VM:ens klocka kan avvika från värdens (till exempel efter en omstart av datorn).
+  Använd `Clock` som parameter, eller en marginal på minst en minut. Det fällde
+  `AdminSetupCodeInitializerTest.aterstallningErsatterTidigareKod` och `AccountSetupCodeIntegrationTest.enNyKodErsatterDenForra`
+  intermittent, och båda går igenom när de körs för sig. Orsaken är inte bevisad genom mätning, men testerna är nu
+  oberoende av databasens klocka.
 
 ## Nivå 3: frontend-komponenter
 

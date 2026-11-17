@@ -44,7 +44,8 @@ public class HolderChangeService {
 	/**
 	 * Gör medlemmen till kontots innehavare. Tokenversionen räknas upp, så att alla sessioner för kontot
 	 * loggas ut, och bytet loggas. Lösenordet behålls och ingen engångskod skapas: den förra innehavaren
-	 * lämnar över lösenordet, och den nya ska byta det (#22). Allt sker i en transaktion.
+	 * lämnar över lösenordet, och den nya måste byta det vid första inloggningen, så kontot flaggas
+	 * ({@link UserAccount#isMustChangePassword()}). Allt sker i en transaktion.
 	 * <p>
 	 * Om medlemmen redan är innehavare händer ingenting. Kontot läses om under lås, så att ett byte som
 	 * görs samtidigt inte missas.

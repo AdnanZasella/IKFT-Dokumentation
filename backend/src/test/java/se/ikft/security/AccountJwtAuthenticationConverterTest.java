@@ -38,6 +38,27 @@ class AccountJwtAuthenticationConverterTest {
 	}
 
 	@Test
+	void kontoSomMasteByttaLosenordFarEnExtraBehorighetSomInteArEnRoll() {
+		UUID id = UUID.randomUUID();
+		konto(id, Role.DOCUMENTER, 0, true);
+
+		AbstractAuthenticationToken token = converter.convert(jwt(id.toString(), 0));
+
+		assertThat(token.getAuthorities().stream().map(GrantedAuthority::getAuthority))
+			.containsExactlyInAnyOrder("ROLE_DOCUMENTER", "PASSWORD_CHANGE_REQUIRED");
+		assertThat(CurrentAccount.mustChangePassword(token)).isTrue();
+		assertThat(CurrentAccount.role(token)).isEqualTo(Role.DOCUMENTER);
+	}
+
+	@Test
+	void kontoUtanFlaggaFarIngenExtraBehorighet() {
+		UUID id = UUID.randomUUID();
+		konto(id, Role.DOCUMENTER, 0);
+
+		assertThat(CurrentAccount.mustChangePassword(converter.convert(jwt(id.toString(), 0)))).isFalse();
+	}
+
+	@Test
 	void namnetArKontotsId() {
 		UUID id = UUID.randomUUID();
 		konto(id, Role.ADMIN, 0);
@@ -92,10 +113,15 @@ class AccountJwtAuthenticationConverterTest {
 	}
 
 	private void konto(UUID id, Role role, int tokenVersion) {
+		konto(id, role, tokenVersion, false);
+	}
+
+	private void konto(UUID id, Role role, int tokenVersion, boolean mustChangePassword) {
 		UserAccount konto = mock(UserAccount.class);
 		when(konto.getId()).thenReturn(id);
 		when(konto.getRole()).thenReturn(role);
 		when(konto.getTokenVersion()).thenReturn(tokenVersion);
+		when(konto.isMustChangePassword()).thenReturn(mustChangePassword);
 		when(accounts.findById(any())).thenReturn(Optional.empty());
 		when(accounts.findById(id)).thenReturn(Optional.of(konto));
 	}
