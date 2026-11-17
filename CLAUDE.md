@@ -19,13 +19,14 @@ granskar tester.
 
 ## Läget
 
-Fas 1 pågår. Färdigt: grunden, engångskoder, inloggning (med utloggning, förnyelse, spärr mot gissning och
+Fas 1 är klar utom #13 (föreningens egen medlemsavgift, skjuts upp tills medlemskapet är bestämt) och
+eventuellt #10 och #28. Färdigt: grunden, engångskoder, inloggning (med utloggning, förnyelse, spärr mot gissning och
 byte av eget lösenord), medlemsregister (med föreningsroller och moskéavgift via FIFS), ändringslogg,
 dokumenteraruppdrag (modell och `GET /documenter-assignment/current`), innehavarbyte (`HolderChangeService`) och
 tvingat lösenordsbyte efter ett innehavarbyte, att utse ordinarie och tillfällig dokumenterare (`POST
-/documenter-assignment` och `/temporary`, `DELETE /temporary`) och ett schemalagt jobb (`HolderSyncJob`, vid midnatt
-och uppstart) som byter innehavare när ett uppdrag börjar eller löper ut. Återstår: behörighetsmatrisen (#20, och
-synk av docs/04). Se issue #31 (ordning för Fas 1) och
+/documenter-assignment` och `/temporary`, `DELETE /temporary`), ett schemalagt jobb (`HolderSyncJob`, vid midnatt
+och uppstart) som byter innehavare när ett uppdrag börjar eller löper ut, och behörighetsmatrisen (#20,
+`BehorighetsmatrisIntegrationTest`, och synk av docs/04). Se issue #31 (ordning för Fas 1) och
 [Öppna frågor](docs/06-oppna-fragor.md). Flaggan för betald avgift gäller än så länge bara moskéavgiften
 via FIFS. Föreningens egen medlemsavgift läggs till när medlemskapet är bestämt. Ändringsloggen sparar
 bara födelsedatum, hemkommun och status med värden, övriga fält bara som ändrade.
@@ -91,6 +92,9 @@ och testerna använder Testcontainers.
 - Integrationstester (`@SpringBootTest`, MockMvc, Testcontainers) för varje endpoint. Varje endpoint
   testas minst för lyckat fall, valideringsfel, 401 och 403 för fel roll. Använd `TestCsrf.csrfToken()`
   för muterande anrop.
+- En ny endpoint under `/api/v1` får en rad i behörighetsmatrisen (`BehorighetsmatrisIntegrationTest.MATRIS`) och
+  i tabellerna i docs/04. Matristestet misslyckas annars. Matrisen kontrollerar bara 401, 403 och tillåtet, vad
+  endpointen gör testas i funktionens egna tester.
 - Bidragsregler testas med gränsvärden (59/60 minuter, 2/3 deltagare, ålder 6/7/25/26).
 - Playwright (E2E) läggs i `e2e/` när admin-appen har en första sida. Håll antalet E2E-tester litet
   och täck bara de viktigaste flödena. Valideringsvarianter och rollmatriser testas i backend, inte i webbläsaren.
