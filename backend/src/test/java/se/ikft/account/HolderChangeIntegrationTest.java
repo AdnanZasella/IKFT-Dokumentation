@@ -199,6 +199,82 @@ class HolderChangeIntegrationTest {
 		assertThat(tokenversion("admin")).isZero();
 	}
 
+	// ---- Ta bort innehavaren
+
+	@Test
+	void ettBorttagetInnehavareRaknarUppTokenversionenOchBehallerLosenordetOchFlaggan() {
+		service.changeHolder(konto("dokumenterare"), medlem(ANNA));
+		String hashFore = hash("dokumenterare");
+
+		boolean borttagen = service.clearHolder(konto("dokumenterare"));
+
+		assertThat(borttagen).isTrue();
+		assertThat(holder("dokumenterare")).isNull();
+		assertThat(tokenversion("dokumenterare")).isEqualTo(2);
+		assertThat(hash("dokumenterare")).isEqualTo(hashFore);
+		assertThat(mustChangePassword("dokumenterare")).isTrue();
+	}
+
+	@Test
+	void ettBorttagetInnehavareLoggasMedForeVardeOchUtanEfterVarde() {
+		service.changeHolder(konto("dokumenterare"), medlem(ANNA));
+
+		service.clearHolder(konto("dokumenterare"));
+
+		List<Map<String, Object>> rader = jdbc.sql("""
+				SELECT a.entity_type, a.action, c.field, c.before_value, c.after_value
+				FROM audit_log a JOIN audit_log_change c ON c.audit_log_id = a.id
+				ORDER BY a.seq DESC
+				""").query().listOfRows();
+		assertThat(rader).hasSize(2);
+		assertThat(rader.getFirst()).containsEntry("entity_type", "ACCOUNT")
+			.containsEntry("action", "UPDATED")
+			.containsEntry("field", "holderMemberId")
+			.containsEntry("before_value", ANNA.toString())
+			.containsEntry("after_value", null);
+	}
+
+	@Test
+	void ettKontoUtanInnehavareAndrasInteAvAttTasBort() {
+		boolean borttagen = service.clearHolder(konto("dokumenterare"));
+
+		assertThat(borttagen).isFalse();
+		assertThat(tokenversion("dokumenterare")).isZero();
+		assertThat(mustChangePassword("dokumenterare")).isFalse();
+		assertThat(antalLoggposter()).isZero();
+	}
+
+	@Test
+	void ettForaldratKontoobjektGerInteEttOnodigtBorttag() {
+		UserAccount foraldrat = konto("dokumenterare");
+		service.changeHolder(foraldrat, medlem(ANNA));
+		service.clearHolder(foraldrat);
+
+		// Objektet säger fortfarande att kontot saknar innehavare (och vid nästa anrop att det har en), men
+		// databasen avgör.
+		assertThat(service.clearHolder(foraldrat)).isFalse();
+		assertThat(tokenversion("dokumenterare")).isEqualTo(2);
+	}
+
+	@Test
+	void adminKontotKanInteFaInnehavarenBortTagen() {
+		assertThatThrownBy(() -> service.clearHolder(konto("admin"))).isInstanceOf(IllegalArgumentException.class);
+
+		assertThat(tokenversion("admin")).isZero();
+		assertThat(antalLoggposter()).isZero();
+	}
+
+	@Test
+	void gamlaSessionerGer401NarInnehavarenTasBort() throws Exception {
+		service.changeHolder(konto("dokumenterare"), medlem(ANNA));
+		Cookie session = loggaIn("dokumenterare").getCookie(AccessTokens.COOKIE_NAME);
+		me(session).andExpect(status().isOk());
+
+		service.clearHolder(konto("dokumenterare"));
+
+		me(session).andExpect(problem401());
+	}
+
 	// ---- Hjälpmetoder
 
 	private UserAccount konto(String username) {

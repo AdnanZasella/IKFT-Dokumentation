@@ -22,8 +22,10 @@ granskar tester.
 Fas 1 pågår. Färdigt: grunden, engångskoder, inloggning (med utloggning, förnyelse, spärr mot gissning och
 byte av eget lösenord), medlemsregister (med föreningsroller och moskéavgift via FIFS), ändringslogg,
 dokumenteraruppdrag (modell och `GET /documenter-assignment/current`), innehavarbyte (`HolderChangeService`) och
-tvingat lösenordsbyte efter ett innehavarbyte. Återstår: att utse dokumenterare (ordinarie och tillfällig) med
-endpoints, och behörighetsmatrisen. Se issue #31 (ordning för Fas 1) och
+tvingat lösenordsbyte efter ett innehavarbyte, att utse ordinarie och tillfällig dokumenterare (`POST
+/documenter-assignment` och `/temporary`, `DELETE /temporary`) och ett schemalagt jobb (`HolderSyncJob`, vid midnatt
+och uppstart) som byter innehavare när ett uppdrag börjar eller löper ut. Återstår: behörighetsmatrisen (#20, och
+synk av docs/04). Se issue #31 (ordning för Fas 1) och
 [Öppna frågor](docs/06-oppna-fragor.md). Flaggan för betald avgift gäller än så länge bara moskéavgiften
 via FIFS. Föreningens egen medlemsavgift läggs till när medlemskapet är bestämt. Ändringsloggen sparar
 bara födelsedatum, hemkommun och status med värden, övriga fält bara som ändrade.
@@ -96,6 +98,8 @@ och testerna använder Testcontainers.
   [docs/07-teststrategi.md](docs/07-teststrategi.md).
 - Ett test som fallerar ibland är en bugg: undersök orsaken, kör inte bara om.
 - Före varje PR: kör agenten `testgranskare` och `/code-review`. CI ska vara grönt, agenternas svar är bara underlag.
+- Schemalagda jobb stängs av i tester med `ikft.assignment.sync-cron=-` (`src/test/resources/application.properties`),
+  så att de inte startar mitt i ett test som kör över midnatt. Testerna anropar jobbet direkt.
 - Testdata är påhittad, aldrig riktiga personer.
 - Integrationstester som skriver till databasen städar själva. Ordningen vid städning är
   `audit_log_change`, `audit_log`, `member_fifs_fee`, `member_role`, `documenter_assignment`, `member`, annars stoppar

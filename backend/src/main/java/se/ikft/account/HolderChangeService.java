@@ -56,28 +56,64 @@ public class HolderChangeService {
 	 */
 	@Transactional
 	public boolean changeHolder(UserAccount account, Member member) {
-		UserAccount locked = accounts.findForUpdateById(account.getId())
-			.orElseThrow(() -> new IllegalStateException("Kontot finns inte: " + account.getId()));
-		if (locked.getRole() != Role.DOCUMENTER) {
-			throw new IllegalArgumentException("Bara Dokumenterare-kontot byter innehavare.");
-		}
+		UserAccount locked = lockDocumenterAccount(account);
 		UUID before = locked.getHolderMemberId();
 		UUID after = member.getId();
 		if (after.equals(before)) {
 			return false;
 		}
 		locked.changeHolder(after, clock.instant());
-		audit.record(AuditEntity.ACCOUNT, locked.getId(), AuditAction.UPDATED, List.of(FieldChange
-			.withValues(HOLDER_FIELD, before == null ? null : before.toString(), after.toString())));
-		// Loggas först efter commit, så att raden bara finns om bytet faktiskt gjordes.
-		String username = locked.getUsername();
+		recordChange(locked, before, after);
+		logAfterCommit("Innehavaren av {} byttes.", locked);
+		return true;
+	}
+
+	/**
+	 * Tar bort kontots innehavare, för när inget uppdrag gäller (till exempel efter ett årsskifte utan nytt
+	 * uppdrag). Tokenversionen räknas upp så att alla sessioner loggas ut, och bytet loggas. Saknar kontot
+	 * redan innehavare händer ingenting. Låsning och kontroller som i
+	 * {@link #changeHolder(UserAccount, Member)}.
+	 *
+	 * @return true om innehavaren togs bort
+	 * @throws IllegalArgumentException om kontot inte är Dokumenterare-kontot
+	 */
+	@Transactional
+	public boolean clearHolder(UserAccount account) {
+		UserAccount locked = lockDocumenterAccount(account);
+		UUID before = locked.getHolderMemberId();
+		if (before == null) {
+			return false;
+		}
+		locked.clearHolder(clock.instant());
+		recordChange(locked, before, null);
+		logAfterCommit("Innehavaren av {} togs bort.", locked);
+		return true;
+	}
+
+	private UserAccount lockDocumenterAccount(UserAccount account) {
+		UserAccount locked = accounts.findForUpdateById(account.getId())
+			.orElseThrow(() -> new IllegalStateException("Kontot finns inte: " + account.getId()));
+		if (locked.getRole() != Role.DOCUMENTER) {
+			throw new IllegalArgumentException("Bara Dokumenterare-kontot byter innehavare.");
+		}
+		return locked;
+	}
+
+	private void recordChange(UserAccount account, UUID before, UUID after) {
+		audit.record(AuditEntity.ACCOUNT, account.getId(), AuditAction.UPDATED,
+				List.of(FieldChange.withValues(HOLDER_FIELD, before == null ? null : before.toString(),
+						after == null ? null : after.toString())));
+	}
+
+	/** Loggas först efter commit, så att raden bara finns om bytet faktiskt gjordes. */
+	private static void logAfterCommit(String message, UserAccount account) {
+		String username = account.getUsername();
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 			@Override
 			public void afterCommit() {
-				log.info("Innehavaren av {} byttes.", username);
+				log.info(message, username);
 			}
 		});
-		return true;
 	}
 
 }

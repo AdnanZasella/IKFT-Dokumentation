@@ -76,6 +76,16 @@ public class UserAccount {
 		this.updatedAt = now;
 	}
 
+	/**
+	 * Tar bort innehavaren och räknar upp tokenversionen, så att sessioner från före bytet blir ogiltiga.
+	 * Flaggan för lösenordsbyte rörs inte: den sätts när nästa innehavare utses.
+	 */
+	void clearHolder(Instant now) {
+		this.holderMemberId = null;
+		this.tokenVersion++;
+		this.updatedAt = now;
+	}
+
 	public boolean hasPassword() {
 		return passwordHash != null;
 	}
