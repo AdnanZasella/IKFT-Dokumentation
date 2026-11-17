@@ -168,6 +168,28 @@ class DocumenterAssignmentsTest {
 	}
 
 	@Test
+	void avslutaIForvagIgenMedEnTidigareTidpunktFlyttarAvslutetTillbaka() {
+		var uppdrag = ordinarie(ANNA, "2026-01-01");
+
+		assertThat(uppdrag.endEarly(Instant.parse("2026-09-01T12:00:00Z"))).isTrue();
+		assertThat(uppdrag.endEarly(Instant.parse("2026-03-10T12:00:00Z"))).isTrue();
+
+		assertThat(uppdrag.getEndedAt()).isEqualTo(Instant.parse("2026-03-10T12:00:00Z"));
+		assertThat(uppdrag.lastActiveDate()).isEqualTo(LocalDate.of(2026, 3, 9));
+	}
+
+	@Test
+	void avslutaIForvagMedSammaEllerSenareTidpunktAndrarInteOchRapporterarDet() {
+		var uppdrag = ordinarie(ANNA, "2026-01-01");
+		uppdrag.endEarly(Instant.parse("2026-03-10T12:00:00Z"));
+
+		assertThat(uppdrag.endEarly(Instant.parse("2026-03-10T12:00:00Z"))).isFalse();
+		assertThat(uppdrag.endEarly(Instant.parse("2026-03-10T12:00:01Z"))).isFalse();
+
+		assertThat(uppdrag.getEndedAt()).isEqualTo(Instant.parse("2026-03-10T12:00:00Z"));
+	}
+
+	@Test
 	void ettAvslutatOrdinarieUppdragErsattsAvEttNyttSomBorjarSammaDag() {
 		var gammalt = ordinarie(ANNA, "2026-01-01");
 		gammalt.endEarly(Instant.parse("2026-03-10T12:00:00Z"));

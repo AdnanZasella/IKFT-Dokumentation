@@ -65,11 +65,18 @@ class DocumenterAssignment {
 		return new DocumenterAssignment(memberId, AssignmentType.TEMPORARY, startDate, endDate, now);
 	}
 
-	/** Avslutar uppdraget i förtid. Ett som redan är avslutat ändras inte. */
-	void endEarly(Instant now) {
-		if (endedAt == null) {
-			endedAt = now;
+	/**
+	 * Avslutar uppdraget i förtid. Är det redan avslutat gäller den tidigaste tidpunkten, så ett uppdrag
+	 * som ersätts av ett som börjar tidigare slutar också tidigare, men aldrig senare.
+	 *
+	 * @return true om uppdragets slut ändrades
+	 */
+	boolean endEarly(Instant at) {
+		if (endedAt == null || at.isBefore(endedAt)) {
+			endedAt = at;
+			return true;
 		}
+		return false;
 	}
 
 	/**

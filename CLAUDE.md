@@ -66,6 +66,9 @@ och testerna använder Testcontainers.
   och 403. Kasta `BadRequestException`, `NotFoundException` eller `ConflictException` för att få 400, 404
   respektive 409.
 - Tidslogik använder den injicerade `Clock` (Europe/Stockholm), aldrig `now()` utan argument.
+- Ett konto som ska ändras under lås läses direkt med `findForUpdateBy...`, aldrig först utan lås. En rad som redan
+  lästs i transaktionen uppdateras inte när låset ges, så `tokenVersion` blir föråldrad och en samtidig ändring
+  skrivs över (sessioner som ska loggas ut förblir giltiga). Samtidiga anrop testas med flera omgångar.
 - API:et är versionerat under `/api/v1`, publikt under `/api/v1/public`. Behörighet kontrolleras
   i backend med Spring Security, aldrig bara i gränssnittet.
 - Autentisering är stateless JWT i HttpOnly-cookie.

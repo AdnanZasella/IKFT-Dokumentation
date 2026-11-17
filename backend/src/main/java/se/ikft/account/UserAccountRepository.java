@@ -35,4 +35,12 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<UserAccount> findForUpdateById(UUID id);
 
+	/**
+	 * Som {@link #findForUpdateByUsername(String)}, men med kontots roll. Använd den i stället för
+	 * {@link #findByRole(Role)} följt av {@link #findForUpdateById(UUID)}: en rad som redan lästs utan lås i
+	 * samma transaktion uppdateras inte när låset ges, så tokenversionen kan vara föråldrad.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	Optional<UserAccount> findForUpdateByRole(Role role);
+
 }

@@ -10,6 +10,9 @@ public enum AuditEntity {
 	MEMBER,
 
 	/** Ett användarkonto, för närvarande bara byte av innehavare. */
-	ACCOUNT
+	ACCOUNT,
+
+	/** Ett dokumenteraruppdrag: när det utses och när det avslutas. */
+	DOCUMENTER_ASSIGNMENT
 
 }
