@@ -164,6 +164,12 @@ avstämd.
 | `POST /auth/change-password` | inloggad | Byter det egna lösenordet. Tar `currentPassword` och `newPassword`, med samma lösenordskrav som `set-password`. Fel nuvarande lösenord eller ett nytt lösenord som är detsamma ger 400, och fel nuvarande lösenord räknas som misslyckade inloggningar (429 efter spärren). Tokenversionen räknas upp så att andra sessioner loggas ut, och svaret sätter nya cookies så att den som bytte förblir inloggad. |
 | `POST /auth/set-password` | öppen (med engångskod) | Sätter lösenordet med en engångskod: ett kontos första lösenord och reservväg om lösenordet glömts bort. |
 
+**Konton — Fas 1**
+
+| Metod & path | Roll | Beskrivning |
+|---|---|---|
+| `POST /accounts/{id}/setup-code` | Admin | Skapar en ny engångskod för kontot, som reservväg om lösenordet glömts bort. Svaret har `code` (i klartext, visas bara här) och `validUntil`. Kontot byter inte innehavare och behåller sitt lösenord tills koden används med `set-password`, och kontots tidigare koder slutar gälla. Okänt konto ger 404. |
+
 **Medlemmar — Fas 1**
 
 | Metod & path | Roll | Beskrivning |

@@ -7,6 +7,9 @@ package se.ikft.audit;
 public enum AuditEntity {
 
 	/** En medlem, inklusive dennes föreningsroller och moskéavgift via FIFS. */
-	MEMBER
+	MEMBER,
+
+	/** Ett användarkonto, för närvarande bara byte av innehavare. */
+	ACCOUNT
 
 }
