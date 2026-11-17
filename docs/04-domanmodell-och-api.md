@@ -141,6 +141,11 @@ etikett.
 Alla paths ligger under `/api/v1`. Fältnivå/request-body specificeras i kod när modellen är
 avstämd.
 
+Tabellerna för Fas 1 beskriver det som finns i koden. Rollerna i dem kontrolleras för varje endpoint av
+`BehorighetsmatrisIntegrationTest`, som misslyckas om en endpoint under `/api/v1` saknas i matrisen eller om
+matrisen har en rad utan endpoint. Tabellerna för senare faser och det publika API:et är planerade och finns inte
+i koden än.
+
 **Publikt API (ingen inloggning, skrivskyddat, cachat)**
 
 | Metod & path | Beskrivning |
@@ -197,6 +202,12 @@ lösenordsbytet. Spärren ligger i säkerhetskedjan och gäller alla adresser. D
 | `POST /documenter-assignment/temporary` | Admin | Utse tillfällig dokumenterare. Tar `memberId` och `endDate`, och uppdraget gäller från i dag till och med slutdatumet. Slutdatumet måste ligga efter i dag, annars 400, och en inaktiv eller okänd medlem ger 400. Pågår redan ett tillfälligt uppdrag (eller överlappar det perioden) ger det 409: avsluta det först med `DELETE`. Kontots innehavare byts direkt (alla sessioner loggas ut, lösenordet behålls och den nya innehavaren måste byta det). Tillfälligt går före ordinarie, som lämnas orört. Svar 201 med samma fält som `POST /documenter-assignment`. |
 | `DELETE /documenter-assignment/temporary` | Admin | Avsluta det pågående tillfälliga uppdraget i förtid, från och med i dag. Rollen går då tillbaka till den ordinarie dokumenteraren (ett innehavarbyte), eller till ingen innehavare om inget ordinarie uppdrag gäller. Svar 204, eller 404 om inget tillfälligt uppdrag pågår. |
 
+**Ändringslogg — Fas 1**
+
+| Metod & path | Roll | Beskrivning |
+|---|---|---|
+| `GET /audit-log?entity=&id=` | Admin | Ändringslogg för en post, senaste ändringen först. `entity` är `MEMBER`, `ACCOUNT` eller `DOCUMENTER_ASSIGNMENT` och `id` är postens id, båda krävs. En post utan ändringar ger en tom lista. Fler typer läggs till när sammankomster, möten och artiklar byggs. |
+
 **Innehavarkontroll (schemalagt jobb).** Vid midnatt (Europe/Stockholm) och när appen startar jämför backenden den aktiva dokumenteraren med kontots innehavare och byter innehavare om de skiljer sig åt. Det täcker att ett tillfälligt uppdrag löpt ut, att ett uppdrag som lagts i förväg börjar gälla, och att ett årsskifte passerats utan nytt uppdrag (kontot får då ingen innehavare, sessionerna loggas ut och Admin får påminnelsen). Är innehavaren redan rätt händer ingenting, så upprepade och samtidiga körningar (flera instanser, eller jobbet mot ett anrop från Admin) räknar inte upp tokenversionen i onödan. Ändringen loggas i ändringsloggen utan inloggad användare. Ett fel i jobbet loggas på ERROR och stoppar inte appen. Uppstartskörningen fångar det som missades om appen låg nere vid midnatt.
 
 **Verksamheter och sammankomster — Fas 2**
@@ -247,7 +258,7 @@ och den inloggade användaren inte är Admin.*
 | `POST /articles/{id}/publish` / `/unpublish` | Admin | Publicera eller avpublicera. |
 | `POST /media` | Admin | Ladda upp bild (med alt-text och samtyckesuppgift). |
 
-**Rapporter, logg och inställningar — Fas 5**
+**Rapporter och inställningar — Fas 5**
 
 | Metod & path | Roll | Beskrivning |
 |---|---|---|
@@ -255,7 +266,6 @@ och den inloggade användaren inte är Admin.*
 | `GET /reports/stats?year=` | Admin | JSON-statistik per medlem och sammankomst. |
 | `GET /reports/export?year=&format=csv` | Admin | Tabellexport för kommunens e-tjänst. |
 | `POST /reports/snapshots` | Admin | Frys en inlämnad rapport. |
-| `GET /audit-log?entity=&id=` | Admin | Ändringslogg för en post (`entity=MEMBER` tills fler typer finns), senaste ändringen först. |
 | `GET/PUT /settings/grant-rules` | Admin | Bidragsparametrar och redigeringsfönster. |
 
 Behörighetsstyrningen hanteras i backend via Spring Security, inte enbart i frontend.
