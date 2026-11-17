@@ -13,8 +13,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import jakarta.servlet.http.Cookie;
+
+import com.jayway.jsonpath.JsonPath;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +55,8 @@ class DocumenterAppointmentIntegrationTest {
 
 	private static final UUID INAKTIV = UUID.fromString("00000000-0000-0000-0000-00000000000c");
 
+	private static final UUID CECILIA = UUID.fromString("00000000-0000-0000-0000-00000000000d");
+
 	@Autowired
 	MockMvc mockMvc;
 
@@ -75,6 +83,7 @@ class DocumenterAppointmentIntegrationTest {
 		medlem(ANNA, "Anna", "Andersson", "ACTIVE");
 		medlem(BERRA, "Bertil", "Berg", "ACTIVE");
 		medlem(INAKTIV, "Ines", "Inaktiv", "INACTIVE");
+		medlem(CECILIA, "Cecilia", "Carlsson", "ACTIVE");
 		admin = loggaIn("admin");
 		dokumenterare = loggaIn("dokumenterare");
 	}
@@ -250,6 +259,94 @@ class DocumenterAppointmentIntegrationTest {
 	}
 
 	@Test
+	void ettUppdragSomBorjarForeEtRedanAvslutatsSlutFlyttarAvslutetTillbakaOchLoggarDet() throws Exception {
+		LocalDate nastaAr = idag.plusYears(1).withDayOfYear(1);
+		utse(admin, ANNA, nastaAr).andExpect(status().isCreated());
+		// Annas uppdrag avslutas från 1 juli nästa år.
+		utse(admin, BERRA, nastaAr.plusMonths(6)).andExpect(status().isCreated());
+		UUID annasUppdrag = uppdragsId(ANNA);
+		long loggFore = antalLoggposter(annasUppdrag);
+
+		// Cecilia börjar 1 april: Annas och Berras uppdrag ska sluta då, inte först 1 juli.
+		utse(admin, CECILIA, nastaAr.plusMonths(3)).andExpect(status().isCreated());
+
+		assertThat(avslutsdag(ANNA)).isEqualTo(nastaAr.plusMonths(3));
+		assertThat(avslutsdag(BERRA)).isEqualTo(nastaAr.plusMonths(3));
+		assertThat(antalLoggposter(annasUppdrag)).isEqualTo(loggFore + 1);
+		// Loggposten visar både det tidigare och det nya slutet.
+		List<Map<String, Object>> andring = jdbc.sql("""
+				SELECT c.before_value, c.after_value FROM audit_log a
+				JOIN audit_log_change c ON c.audit_log_id = a.id
+				WHERE a.entity_id = ? AND a.action = 'UPDATED' ORDER BY a.seq DESC
+				""").param(annasUppdrag).query().listOfRows();
+		assertThat(andring.getFirst().get("before_value")).isNotNull();
+		assertThat(andring.getFirst().get("after_value")).isNotEqualTo(andring.getFirst().get("before_value"));
+	}
+
+	@Test
+	void enMedlemSomErsattsKanUtsesIgenOchFarEttNyttUppdrag() throws Exception {
+		utse(admin, ANNA, idag).andExpect(status().isCreated());
+		utse(admin, BERRA, idag).andExpect(status().isCreated());
+
+		// Annas uppdrag är avslutat, så hon räknas inte som redan utsedd.
+		utse(admin, ANNA, idag).andExpect(status().isCreated());
+
+		assertThat(holder()).isEqualTo(ANNA);
+		assertThat(tokenversion()).isEqualTo(3);
+		assertThat(jdbc.sql("SELECT count(*) FROM documenter_assignment WHERE member_id = ?")
+			.param(ANNA)
+			.query(Long.class)
+			.single()).isEqualTo(2);
+		current(admin).andExpect(jsonPath("$.memberId").value(ANNA.toString()));
+	}
+
+	/**
+	 * Racet körs flera gånger, eftersom ett fel i låsningen bara syns när trådarna hamnar i en viss ordning. Ett
+	 * fel gav tidigare en för låg tokenversion, så att den förra innehavarens session fortsatte gälla.
+	 */
+	@Test
+	void tvaSamtidigaUtseendenGerEttGallandeUppdragOchRattInnehavare() throws Exception {
+		for (int omgang = 0; omgang < 5; omgang++) {
+			CountDownLatch klar = new CountDownLatch(1);
+			try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+				List<Future<Integer>> svar = List.of(pool.submit(() -> {
+					klar.await();
+					return utse(admin, ANNA, idag).andReturn().getResponse().getStatus();
+				}), pool.submit(() -> {
+					klar.await();
+					return utse(admin, BERRA, idag).andReturn().getResponse().getStatus();
+				}));
+				klar.countDown();
+				for (Future<Integer> resultat : svar) {
+					assertThat(resultat.get()).isEqualTo(201);
+				}
+			}
+
+			// Oavsett ordning gäller exakt ett uppdrag, och innehavaren är den som har det. Varje byte räknar upp
+			// tokenversionen, så den är två när båda utseendena bytte innehavare.
+			assertThat(antalUppdrag()).isEqualTo(2);
+			assertThat(jdbc.sql("SELECT count(*) FROM documenter_assignment WHERE ended_at IS NULL")
+				.query(Long.class)
+				.single()).isEqualTo(1);
+			UUID gallande = jdbc.sql("SELECT member_id FROM documenter_assignment WHERE ended_at IS NULL")
+				.query(UUID.class)
+				.single();
+			assertThat(holder()).isEqualTo(gallande);
+			assertThat(tokenversion()).as("tokenversion i omgång %d", omgang).isEqualTo(2);
+			current(admin).andExpect(jsonPath("$.memberId").value(gallande.toString()));
+
+			// Tillbaka till början inför nästa omgång, med medlemmarna kvar. Admins session berörs inte.
+			jdbc.sql("DELETE FROM audit_log_change").update();
+			jdbc.sql("DELETE FROM audit_log").update();
+			jdbc.sql("DELETE FROM documenter_assignment").update();
+			jdbc.sql("""
+					UPDATE user_account SET token_version = 0, holder_member_id = NULL, must_change_password = false
+					WHERE username = 'dokumenterare'
+					""").update();
+		}
+	}
+
+	@Test
 	void ettUppdragSomBorjarSenareLamnarEttUppdragIDagUnangetTillStartdatumet() throws Exception {
 		utse(admin, ANNA, idag).andExpect(status().isCreated());
 
@@ -371,11 +468,10 @@ class DocumenterAppointmentIntegrationTest {
 
 	@Test
 	void uppdragetOchInnehavarbytetLoggas() throws Exception {
-		String id = utse(admin, ANNA, idag).andExpect(status().isCreated())
+		String id = JsonPath.read(utse(admin, ANNA, idag).andExpect(status().isCreated())
 			.andReturn()
 			.getResponse()
-			.getContentAsString()
-			.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+			.getContentAsString(), "$.id");
 
 		mockMvc.perform(get("/api/v1/audit-log").param("entity", "DOCUMENTER_ASSIGNMENT").param("id", id).cookie(admin))
 			.andExpect(status().isOk())
@@ -467,6 +563,28 @@ class DocumenterAppointmentIntegrationTest {
 
 	private long antalUppdrag() {
 		return jdbc.sql("SELECT count(*) FROM documenter_assignment").query(Long.class).single();
+	}
+
+	private UUID uppdragsId(UUID medlem) {
+		return jdbc.sql("SELECT id FROM documenter_assignment WHERE member_id = ?")
+			.param(medlem)
+			.query(UUID.class)
+			.single();
+	}
+
+	private long antalLoggposter(UUID uppdrag) {
+		return jdbc.sql("SELECT count(*) FROM audit_log WHERE entity_id = ?")
+			.param(uppdrag)
+			.query(Long.class)
+			.single();
+	}
+
+	/** Dagen uppdraget avslutades, i föreningens tidszon: uppdraget gäller inte från och med den dagen. */
+	private LocalDate avslutsdag(UUID medlem) {
+		return jdbc.sql("""
+				SELECT (ended_at AT TIME ZONE 'Europe/Stockholm')::date FROM documenter_assignment
+				WHERE member_id = ?
+				""").param(medlem).query(LocalDate.class).single();
 	}
 
 	private boolean avslutade(UUID medlem) {

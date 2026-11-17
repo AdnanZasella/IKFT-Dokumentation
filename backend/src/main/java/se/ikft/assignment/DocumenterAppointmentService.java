@@ -112,9 +112,12 @@ public class DocumenterAppointmentService {
 		Instant endAt = startDate.atStartOfDay(TimeConfig.ZONE).toInstant();
 		for (DocumenterAssignment other : candidates) {
 			if (other.getType() == AssignmentType.ORDINARY && other.isActiveDuring(startDate, periodEnd)) {
-				other.endEarly(endAt);
-				audit.record(AuditEntity.DOCUMENTER_ASSIGNMENT, other.getId(), AuditAction.UPDATED,
-						List.of(FieldChange.withValues("endedAt", null, endAt.toString())));
+				Instant before = other.getEndedAt();
+				if (other.endEarly(endAt)) {
+					audit.record(AuditEntity.DOCUMENTER_ASSIGNMENT, other.getId(), AuditAction.UPDATED,
+							List.of(FieldChange.withValues("endedAt", before == null ? null : before.toString(),
+									endAt.toString())));
+				}
 			}
 		}
 		DocumenterAssignment created = assignments
@@ -140,10 +143,13 @@ public class DocumenterAppointmentService {
 		}
 	}
 
+	/**
+	 * Låser Dokumenterare-kontot direkt, utan att först läsa det utan lås. Annars kan en samtidig utsedd
+	 * hinna uppdatera kontot medan vi väntar på låset, och vi räknar då upp tokenversionen från ett
+	 * föråldrat värde.
+	 */
 	private UserAccount lockDocumenterAccount() {
-		UserAccount account = accounts.findByRole(Role.DOCUMENTER)
-			.orElseThrow(() -> new IllegalStateException("Dokumenterare-kontot saknas i databasen."));
-		return accounts.findForUpdateById(account.getId())
+		return accounts.findForUpdateByRole(Role.DOCUMENTER)
 			.orElseThrow(() -> new IllegalStateException("Dokumenterare-kontot saknas i databasen."));
 	}
 
