@@ -24,8 +24,11 @@ import se.ikft.common.config.TimeConfig;
 @Component
 class HolderSyncJob implements ApplicationRunner {
 
+	/** Sekund, minut, timme, dag, månad, veckodag: 00:00:00 varje dag. */
+	static final String DEFAULT_CRON = "0 0 0 * * *";
+
 	/** Midnatt varje dag. Inställningen finns bara för att kunna stängas av i tester. */
-	static final String CRON = "${ikft.assignment.sync-cron:0 0 0 * * *}";
+	static final String CRON = "${ikft.assignment.sync-cron:" + DEFAULT_CRON + "}";
 
 	private static final Logger log = LoggerFactory.getLogger(HolderSyncJob.class);
 

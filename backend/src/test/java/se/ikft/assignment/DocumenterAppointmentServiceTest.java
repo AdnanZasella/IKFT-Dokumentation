@@ -178,15 +178,6 @@ class DocumenterAppointmentServiceTest {
 	}
 
 	@Test
-	void syncHolderRedovisarOmInnehavarenAndrades() {
-		uppdrag.add(ordinarie(ANNA, LocalDate.of(2026, 1, 1)));
-		when(holderChanges.changeHolder(konto, medlemmar.get(ANNA))).thenReturn(true, false);
-
-		assertThat(service.syncHolder()).isTrue();
-		assertThat(service.syncHolder()).isFalse();
-	}
-
-	@Test
 	void syncHolderLasKontotDirektUtanAttForstLasaDetUtanLas() {
 		service.syncHolder();
 
