@@ -39,10 +39,13 @@ bara födelsedatum, hemkommun och status med värden, övriga fält bara som än
 
 Frontend: planen finns i [docs/08-frontend.md](docs/08-frontend.md) (admin-appen i React, hemsidan i Astro,
 admin först och hemsidan som prototyp med exempeldata). Issues #46–#53, ordning i #31. #46 (OpenAPI-kontraktet) är
-klart, liksom #47 (admin-appens grund, med typade felsvar: `ProblemDetail` är `default`-svar i kontraktet). Nästa är
-#48 (inloggning, tvingat lösenordsbyte och första E2E-testet). #48 ska invalidera `ME_KEY` efter lyckad inloggning
-(kontot är cachat med `staleTime: Infinity`) och skicka redan inloggade bort från `/login`. Hemsidans prototyp (#53)
-tas efter admin-spåret.
+klart, liksom #47 (admin-appens grund, med typade felsvar: `ProblemDetail` är `default`-svar i kontraktet) och #48
+(inloggning, tvingat lösenordsbyte och första E2E-flödet med profilen `e2e`, `e2e/` och CI-jobbet `e2e.yml`).
+Inloggningen lägger kontot ur svaret i cachen (`ME_KEY`, `staleTime: Infinity`) i stället för att invalidera den, och
+redan inloggade skickas bort från `/login`. Nästa är #49 (skal med navigering och Översikt, där Radix läggs till om en
+dialog eller meny behövs), därefter #50–#52. Det finns ännu ingen sida i admin-appen för `POST /auth/set-password`
+(engångskod), som behövs för att sätta Admins första lösenord utan API-anrop. Hemsidans prototyp (#53) tas efter
+admin-spåret.
 Backendens API för sammankomster, möten och det publika API:et finns inte än (Fas 2–4).
 
 Backend är uppdelad i paket per funktion under `se.ikft`. Varje paket har en `package-info.java`
