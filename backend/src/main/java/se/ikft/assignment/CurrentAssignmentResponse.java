@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import se.ikft.assignment.DocumenterAssignmentService.ActiveHolder;
 
@@ -19,9 +20,11 @@ import se.ikft.assignment.DocumenterAssignmentService.ActiveHolder;
  * @param nextYearAssigned bara för Admin: om nästa års dokumenterare redan är utsedd
  * @param reminder bara för Admin: om Admin ska påminnas om att utse nästa års dokumenterare
  */
-record CurrentAssignmentResponse(boolean assigned, UUID memberId, String memberName, AssignmentType type,
-		LocalDate endDate, @JsonInclude(JsonInclude.Include.NON_NULL) Boolean nextYearAssigned,
-		@JsonInclude(JsonInclude.Include.NON_NULL) Boolean reminder) {
+record CurrentAssignmentResponse(boolean assigned, @Schema(nullable = true) UUID memberId,
+		@Schema(nullable = true) String memberName, @Schema(nullable = true) AssignmentType type,
+		@Schema(nullable = true) LocalDate endDate,
+		@Schema(nullable = true) @JsonInclude(JsonInclude.Include.NON_NULL) Boolean nextYearAssigned,
+		@Schema(nullable = true) @JsonInclude(JsonInclude.Include.NON_NULL) Boolean reminder) {
 
 	static CurrentAssignmentResponse of(Optional<ActiveHolder> holder, Boolean nextYearAssigned, Boolean reminder) {
 		return holder

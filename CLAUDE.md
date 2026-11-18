@@ -95,6 +95,11 @@ och testerna använder Testcontainers.
 - En ny endpoint under `/api/v1` får en rad i behörighetsmatrisen (`BehorighetsmatrisIntegrationTest.MATRIS`) och
   i tabellerna i docs/04. Matristestet misslyckas annars. Matrisen kontrollerar bara 401, 403 och tillåtet, vad
   endpointen gör testas i funktionens egna tester.
+- API-kontraktet: ändrar du en endpoint eller en svarsklass misslyckas `OpenApiKontraktIntegrationTest`. Kör
+  `./mvnw test -Dtest=OpenApiKontraktIntegrationTest -Dopenapi.update=true`, därefter `npm run gen:api` i `admin/`, och
+  checka in `admin/src/api/openapi.json` och `schema.d.ts`. Ett svarsfält som kan vara null markeras
+  `@Schema(nullable = true)`, annars blir det obligatoriskt i TypeScript-typerna. Se
+  [docs/07-teststrategi.md](docs/07-teststrategi.md#kontrakt-mellan-backend-och-frontend).
 - Bidragsregler testas med gränsvärden (59/60 minuter, 2/3 deltagare, ålder 6/7/25/26).
 - Playwright (E2E) läggs i `e2e/` när admin-appen har en första sida. Håll antalet E2E-tester litet
   och täck bara de viktigaste flödena. Valideringsvarianter och rollmatriser testas i backend, inte i webbläsaren.
