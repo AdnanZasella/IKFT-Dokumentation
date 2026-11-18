@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 
 import { useSession } from "./session";
+import { SessionFailed, SessionPending } from "./SessionStatus";
 
 /**
  * Släpper bara in inloggade. En utloggad skickas till inloggningen, och ett konto som måste byta lösenord
@@ -14,17 +15,10 @@ export function RequireSession({ passwordChange = false }: { passwordChange?: bo
   const session = useSession();
 
   if (session.isPending) {
-    return <p role="status">Laddar…</p>;
+    return <SessionPending />;
   }
   if (session.isError) {
-    return (
-      <div role="alert">
-        <p>Det gick inte att hämta inloggningen. Kontrollera anslutningen.</p>
-        <button type="button" onClick={() => void session.refetch()}>
-          Försök igen
-        </button>
-      </div>
-    );
+    return <SessionFailed onRetry={() => void session.refetch()} />;
   }
   if (session.data === null) {
     return <Navigate to="/login" replace />;
