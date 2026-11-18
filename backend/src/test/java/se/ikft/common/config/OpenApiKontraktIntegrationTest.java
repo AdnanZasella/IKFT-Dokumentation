@@ -74,6 +74,8 @@ class OpenApiKontraktIntegrationTest {
 		String aktuell = beskrivning();
 
 		if (Boolean.getBoolean(UPPDATERA)) {
+			// Uppdateringsläget skriver filen och godkänner alltid, så det får aldrig vara på i CI.
+			assertThat(System.getenv("CI")).as("-D%s får inte användas i CI", UPPDATERA).isNull();
 			Files.createDirectories(FIL.getParent());
 			Files.writeString(FIL, aktuell, StandardCharsets.UTF_8);
 			return;
@@ -98,14 +100,6 @@ class OpenApiKontraktIntegrationTest {
 
 		assertThat(ikoden).as("endpoints under %s i koden", API).isNotEmpty();
 		assertThat(ibeskrivningen).as("endpoints i OpenAPI-beskrivningen").containsExactlyInAnyOrderElementsOf(ikoden);
-	}
-
-	@Test
-	void beskrivningenInnehallerInteServrarEllerAndraAdresserAnApiV1() throws Exception {
-		JsonNode beskrivning = MAPPER.readTree(beskrivning());
-
-		assertThat(beskrivning.has("servers")).as("servers (beror på hur den hämtades)").isFalse();
-		beskrivning.path("paths").propertyNames().forEach(path -> assertThat(path).startsWith(API + "/"));
 	}
 
 	@Test

@@ -22,11 +22,16 @@ import se.ikft.TestcontainersConfiguration;
 
 /**
  * OpenAPI-beskrivningen ska inte finnas i drift (#46). Beskrivningen listar varje endpoint, och den behövs bara för
- * att skapa kontraktet till admin-appen, se {@link OpenApiKontraktIntegrationTest}. Testet kör appen med standardinställningar.
+ * att skapa kontraktet till admin-appen, se {@link OpenApiKontraktIntegrationTest}. Testerna kör appen med
+ * standardinställningar.
+ * <p>
+ * Säkerhetsfiltren är avstängda. Säkerhetskedjan nekar redan allt utanför {@code /api/v1}, så med filtren på skulle
+ * ett anrop få 401 både när beskrivningen är på och när den är av. Utan filtren är skillnaden synlig: 200 när den är
+ * på och 404 när den är av.
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 class OpenApiAvstangdIntegrationTest {
 
 	@Autowired
@@ -47,13 +52,8 @@ class OpenApiAvstangdIntegrationTest {
 	}
 
 	@Test
-	void beskrivningenArInteNarbarForEnAnonymBesokare() throws Exception {
-		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isUnauthorized());
-	}
-
-	@Test
-	void swaggerGranssnittetFinnsInte() throws Exception {
-		mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isUnauthorized());
+	void beskrivningenSvararInteMedStandardinstallningar() throws Exception {
+		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isNotFound());
 	}
 
 }

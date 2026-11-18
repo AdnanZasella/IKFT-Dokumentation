@@ -25,7 +25,9 @@ class OpenApiConfig {
 
 	/**
 	 * Alla fält i ett svar finns med i JSON-svaret utom de som är nullbara ({@code @Schema(nullable = true)}).
-	 * Utan det här blir varje fält valfritt i TypeScript-typerna. Förfrågningar (klasser som slutar på
+	 * Nullbar betyder här "null eller utelämnad", så TypeScript-typen blir {@code fält?: T | null}. Det gäller också
+	 * fält som bara utelämnas ({@code @JsonInclude(NON_NULL)}). Ett nytt fält som kan vara null måste markeras, annars
+	 * blir det obligatoriskt. Utan regeln blir varje fält valfritt i TypeScript-typerna. Förfrågningar (klasser som slutar på
 	 * {@code Request}) styrs av valideringsreglerna och rörs inte.
 	 */
 	@Bean

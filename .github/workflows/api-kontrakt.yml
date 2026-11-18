@@ -39,9 +39,12 @@ jobs:
       - name: Generera typerna
         run: npm run gen:api
 
+      # git status fångar också en fil som aldrig har checkats in, vilket git diff inte gör.
       - name: Kontrollera att schema.d.ts är aktuell
         run: |
-          if ! git diff --exit-code -- src/api; then
+          if [ -n "$(git status --porcelain -- src/api)" ]; then
+            git status --short -- src/api
+            git diff -- src/api
             echo "::error::admin/src/api/schema.d.ts är inte genererad ur openapi.json. Kör 'npm run gen:api' i admin/ och checka in resultatet."
             exit 1
           fi
