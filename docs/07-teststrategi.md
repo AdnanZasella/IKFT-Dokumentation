@@ -12,9 +12,9 @@ billigare.
 |---|---|---|---|
 | 1. Enhet | JUnit 5, AssertJ | Ren logik utan Spring och databas: bidragsregler med gränsvärden, engångskoder, tidslogik med fast `Clock`. | Finns |
 | 2. Integration (API) | `@SpringBootTest`, MockMvc, Testcontainers (Postgres 18) | Varje endpoint mot en riktig databas: behörighet, validering, transaktioner, Flyway-migreringar. Här ligger nästan all affärslogik. | Finns |
-| 3. Frontend-komponenter | Vitest, Testing Library | Formulär, validering och visning, utan webbläsare och utan backend. | När admin-appen startar |
-| 4. E2E | Playwright (`e2e/`) | De få flöden där webbläsare, frontend, backend och databas måste fungera ihop. | När admin-appen har en första sida |
-| 5. Utforskning | Playwright MCP med Claude | Interaktiv felsökning och att ta fram nya E2E-tester. Bevisar ingenting i CI. | När admin-appen startar |
+| 3. Frontend-komponenter | Vitest, Testing Library | Formulär, validering och visning, utan webbläsare och utan backend. | Finns |
+| 4. E2E | Playwright (`e2e/`) | De få flöden där webbläsare, frontend, backend och databas måste fungera ihop. | Finns (första inloggningen) |
+| 5. Utforskning | Playwright MCP med Claude | Interaktiv felsökning och att ta fram nya E2E-tester. Bevisar ingenting i CI. | Kan användas |
 
 Regel: ett fel som kan fångas på nivå 1–2 ska inte bara fångas på nivå 4. Valideringsvarianter,
 gränsvärden och rollmatriser testas i backend, inte i webbläsaren.
@@ -64,15 +64,27 @@ Allt annat, till exempel valideringsfel och varje rollkombination, hör hemma i 
 
 **Körmiljö.** E2E körs mot den riktiga backenden och en riktig Postgres, aldrig mot mockar:
 
-- Backenden startas med `./mvnw spring-boot:test-run`, som startar `TestBackendApplication` med Testcontainers.
-  Det kräver ingen separat databas och ingen kod som följer med i den byggda appen.
-- Testkontona `admin` och `dokumenterare` skapas av migreringen utan lösenord. Därför läggs en sådan hjälpklass
-  i `src/test` och aktiveras bara med profilen `e2e`: den sätter kända lösenord och skapar påhittade
-  testmedlemmar. Den ligger inte i produktionskoden, och ett test ska visa att den inte finns i den vanliga
-  profilen. Lösenordet i loggen vid uppstart (`AdminSetupCodeInitializer`) används aldrig i E2E, eftersom det
-  vore skört att läsa loggar.
-- Playwrights `webServer` startar frontenden. CI startar backenden före Playwright och väntar på
-  `/actuator/health`.
+- Backenden startas med `./mvnw spring-boot:test-run -Dspring-boot.run.profiles=e2e`, som startar
+  `TestBackendApplication` med Testcontainers. Det kräver ingen separat databas och ingen kod som följer med i den
+  byggda appen. Databasen är ny för varje start och rör aldrig dev-databasen i `compose.yaml`.
+- Testkontona `admin` och `dokumenterare` skapas av migreringen utan lösenord. Därför finns hjälpklassen
+  `E2eDataInitializer` (`se.ikft.e2e` i `src/test`, `@Profile("e2e")`): den sätter kända lösenord och skapar tre
+  påhittade medlemmar. Den ligger inte i produktionskoden och är avstängd i den vanliga profilen.
+  `E2eDataInitializerIntegrationTest` visar vad den gör och `E2eProfilAvstangdIntegrationTest` att den inte finns
+  utan profilen. `application-e2e.properties` stänger av Compose-stödet, eftersom Testcontainers redan ger databasen.
+  Lösenorden är publika, gäller bara E2E-databasen och står både i hjälpklassen och i `e2e/support/konton.ts`.
+  Lösenordet i loggen vid uppstart (`AdminSetupCodeInitializer`) används aldrig i E2E, eftersom det vore skört att
+  läsa loggar.
+- Playwrights `webServer` startar frontenden (Vite). CI startar backenden före Playwright och väntar på
+  `/actuator/health/readiness`, som blir UP först när alla `ApplicationRunner` har körts, alltså efter att profilen
+  `e2e` har satt lösenorden. Jobbet ligger i [e2e.yml](../.github/workflows/e2e.yml). Det bygger backenden själv och
+  körs därför vid sidan av backend-jobbet, inte efter det.
+
+**Köra lokalt.** Docker ska vara igång, och dev-backenden på port 8080 ska vara stoppad.
+
+1. `cd backend && ./mvnw spring-boot:test-run -Dspring-boot.run.profiles=e2e` och vänta på `Started BackendApplication`.
+2. `cd e2e && npm ci`, och första gången `npx playwright install chromium`.
+3. `npm test` i `e2e/`. Starta inte om backenden mellan körningarna: testerna städar efter sig och går att köra om.
 
 **Skrivregler.**
 
@@ -81,8 +93,16 @@ Allt annat, till exempel valideringsfel och varje rollkombination, hör hemma i 
 - Inga `waitForTimeout`. Playwrights `expect` väntar själv. Ett test som behöver en paus har fel väntevillkor.
 - Varje test skapar sin egen data med unika namn och är oberoende av ordning. Börja med `workers: 1` mot den
   delade databasen, och öka först när testerna är isolerade per arbetare.
-- Inloggning görs en gång per roll i ett uppsättningssteg och sparas som `storageState`. Ett test går
-  igenom inloggningen i gränssnittet.
+- Inloggning görs en gång per roll i ett uppsättningssteg (`tests/auth.setup.ts`, via API:et) och sparas som
+  `storageState` i `e2e/.auth/`. Ett test väljer roll med `test.use({ storageState: ADMIN.sparadInloggning })`. Ett
+  test går igenom inloggningen i gränssnittet (`forsta-inloggningen.spec.ts`).
+- Förberedelser och städning görs via API:et med `ApiSession` (`support/api.ts`), som loggar in på nytt för varje
+  test. Själva flödet som testas går alltid genom gränssnittet. Admin skapar till exempel en medlem och utser den till
+  dokumenterare via API:et, och det gör att Dokumenterare-kontot måste byta lösenord vid nästa inloggning.
+- Ett test som ändrar ett delat konto sätter tillbaka det i `afterEach`, så att det går att köra om mot samma backend.
+  Ett innehavarbyte gör kontots sparade inloggning ogiltig (tokenversionen räknas upp), så testet skapar om den.
+- Playwrights webbläsare tillåter `Secure`-cookies på `localhost`, så `__Host-`-cookies i `storageState` fungerar över
+  `http://localhost`.
 - Projekt för Chromium på skrivbord och en mobilprofil (Pixel). Firefox och WebKit läggs till först om något
   visar behov.
 - Ett tillgänglighetstest per huvudsida med `@axe-core/playwright`.
@@ -127,8 +147,8 @@ säkerhetskedjans 401, 403 och 403 med `mustChangePassword`.
   Test- och täckningsrapporter sparas som artefakt.
 - **Admin-appen:** lint, typkontroll, Vitest och bygge ([admin-ci.yml](../.github/workflows/admin-ci.yml)). Jobbet
   behöver ingen backend, eftersom anropen mockas med MSW, så det körs vid sidan av backend-jobbet och inte efter det.
-- **När E2E finns:** ett E2E-jobb efter backend-jobbet. Alla jobb ska vara obligatoriska kontroller för att få merga
-  till `main`.
+- **E2E:** Playwright mot backend, admin-app och databas ([e2e.yml](../.github/workflows/e2e.yml)). Rapport, trace
+  och video sparas som artefakt. Alla jobb ska vara obligatoriska kontroller för att få merga till `main`.
 - Obligatoriska kontroller och skydd av `main` ställs in i GitHub (Settings → Branches), inte i koden.
 
 ## Vad vi medvetet inte gör

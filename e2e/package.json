@@ -1,0 +1,22 @@
+{
+  "name": "ikft-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "E2E-tester (Playwright) för IKFT, se docs/07-teststrategi.md.",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "typecheck": "tsc --noEmit",
+    "install:browsers": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.1",
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  }
+}

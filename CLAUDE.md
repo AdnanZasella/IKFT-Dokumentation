@@ -17,8 +17,11 @@ granskar tester och [docs/08-frontend.md](docs/08-frontend.md) innan du bygger a
   publik, så inget där får vara privat. Behövs först i fas 4.
 - `admin/` – admin-appen (React, Vite, strikt TypeScript). Grunden är klar (#47): typad API-klient (`src/api/`),
   session och routing (`src/app/`), Vitest med MSW (`src/test/`) och API-kontraktet (`src/api/openapi.json` och
-  `schema.d.ts`). Sidorna är platshållare och byggs i #48–#52.
-- `web/` (hemsidan, Astro) och `e2e/` finns inte än (#53 och #48).
+  `schema.d.ts`). Inloggning och tvingat lösenordsbyte finns (#48, `src/auth/`, byggstenar i `src/ui/`, Tailwind med
+  designvariabler i `src/styles.css`). Övriga sidor är platshållare och byggs i #49–#52.
+- `e2e/` – Playwright-tester (#48): `tests/` (specar och `auth.setup.ts`), `support/` (`ApiSession` för förberedelser via
+  API:et, testkontona). Backenden startas med profilen `e2e`, se Kommandon.
+- `web/` (hemsidan, Astro) finns inte än (#53).
 
 ## Läget
 
@@ -81,6 +84,15 @@ Kör i `admin/` (Node 22):
 - På Windows: kör Vitest från PowerShell eller en terminal där sökvägen har stor enhetsbokstav (`C:\`). I Git Bash
   (`/c/...`) hittar Vitest inte sin körare ("failed to find the runner").
 
+Kör i `e2e/` (Node 22, Docker igång, dev-backenden på port 8080 stoppad):
+
+- Starta först backenden i `backend/`: `./mvnw spring-boot:test-run -Dspring-boot.run.profiles=e2e` (egen databas via
+  Testcontainers, kända lösenord, rör inte dev-databasen). Vänta på `Started BackendApplication`.
+- `npm ci`, första gången `npx playwright install chromium`, sedan `npm test`. Playwright startar Vite själv.
+  `npm run typecheck` kontrollerar typerna. Testerna går att köra om mot samma backend.
+- Kör Playwright från PowerShell, som Vitest. E2E-backenden (`-Xmx512m` räcker), Chromium och Vite gick med knappt
+  1 GB ledigt minne, men kör inte E2E samtidigt som `./mvnw verify`.
+
 ## Konventioner
 
 - Databasändringar görs med Flyway. JPA körs med `open-in-view: false` och
@@ -125,8 +137,8 @@ Kör i `admin/` (Node 22):
   anropar `useApi()` och behöver inte hantera det själva. Mockar i tester (MSW) använder `endpoint(...)`,
   `accountInfo(...)` och `problem(...)` ur `src/test/mocks.ts`, som är typade efter kontraktet.
 - Bidragsregler testas med gränsvärden (59/60 minuter, 2/3 deltagare, ålder 6/7/25/26).
-- Playwright (E2E) läggs i `e2e/` när admin-appen har en första sida. Håll antalet E2E-tester litet
-  och täck bara de viktigaste flödena. Valideringsvarianter och rollmatriser testas i backend, inte i webbläsaren.
+- Playwright (E2E) ligger i `e2e/` och körs mot backenden med profilen `e2e` (hjälpklassen `E2eDataInitializer` i
+  `src/test`, aldrig i produktionskoden). Håll antalet E2E-tester litet och täck bara de viktigaste flödena. Valideringsvarianter och rollmatriser testas i backend, inte i webbläsaren.
   Upplägg, körmiljö och skrivregler (inga `waitForTimeout`, lokaliserare på roll och etikett, egen testdata) finns i
   [docs/07-teststrategi.md](docs/07-teststrategi.md).
 - Ett test som fallerar ibland är en bugg: undersök orsaken, kör inte bara om.
