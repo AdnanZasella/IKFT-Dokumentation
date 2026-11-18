@@ -377,6 +377,47 @@
         "required" : [ "ageGroup", "firstName", "id", "lastName" ],
         "type" : "object"
       },
+      "ProblemDetail" : {
+        "description" : "RFC 9457 ProblemDetail",
+        "properties" : {
+          "detail" : {
+            "type" : "string"
+          },
+          "errors" : {
+            "items" : {
+              "properties" : {
+                "field" : {
+                  "type" : "string"
+                },
+                "message" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "field", "message" ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "instance" : {
+            "type" : "string"
+          },
+          "mustChangePassword" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status" ],
+        "type" : "object"
+      },
       "SetPasswordRequest" : {
         "properties" : {
           "code" : {
@@ -454,6 +495,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "account-setup-code-controller" ]
@@ -492,6 +543,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "audit-controller" ]
@@ -520,6 +581,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "auth-controller" ]
@@ -548,6 +619,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "auth-controller" ]
@@ -559,6 +640,16 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "auth-controller" ]
@@ -577,6 +668,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "auth-controller" ]
@@ -603,6 +704,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "auth-controller" ]
@@ -624,6 +735,16 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "auth-controller" ]
@@ -652,6 +773,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "documenter-assignment-controller" ]
@@ -670,6 +801,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "documenter-assignment-controller" ]
@@ -681,6 +822,16 @@
         "responses" : {
           "200" : {
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "documenter-assignment-controller" ]
@@ -707,6 +858,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "documenter-assignment-controller" ]
@@ -737,6 +898,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "member-controller" ]
@@ -763,6 +934,16 @@
               }
             },
             "description" : "Created"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "member-controller" ]
@@ -783,6 +964,16 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "member-controller" ]
@@ -808,6 +999,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "member-controller" ]
@@ -843,6 +1044,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "member-controller" ]
@@ -878,6 +1089,16 @@
               }
             },
             "description" : "OK"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "member-controller" ]
@@ -915,6 +1136,16 @@
               }
             },
             "description" : "Created"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description" : "Fel, som RFC 9457 ProblemDetail"
           }
         },
         "tags" : [ "member-controller" ]

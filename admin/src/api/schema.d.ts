@@ -390,6 +390,20 @@ export interface components {
             id: string;
             lastName: string;
         };
+        /** @description RFC 9457 ProblemDetail */
+        ProblemDetail: {
+            detail?: string;
+            errors?: {
+                field: string;
+                message: string;
+            }[];
+            instance?: string;
+            mustChangePassword?: boolean;
+            /** Format: int32 */
+            status: number;
+            title?: string;
+            type?: string;
+        };
         SetPasswordRequest: {
             code: string;
             newPassword: string;
@@ -435,6 +449,15 @@ export interface operations {
                     "application/json": components["schemas"]["SetupCodeResponse"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     history: {
@@ -456,6 +479,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEntry"][];
+                };
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -482,6 +514,15 @@ export interface operations {
                     "application/json": components["schemas"]["AccountInfo"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     login: {
@@ -506,6 +547,15 @@ export interface operations {
                     "application/json": components["schemas"]["AccountInfo"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     logout: {
@@ -523,6 +573,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
             };
         };
     };
@@ -542,6 +601,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountInfo"];
+                };
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -566,6 +634,15 @@ export interface operations {
                     "application/json": components["schemas"]["AccountInfo"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     setPassword: {
@@ -587,6 +664,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
             };
         };
     };
@@ -612,6 +698,15 @@ export interface operations {
                     "application/json": components["schemas"]["AppointmentResponse"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     current: {
@@ -630,6 +725,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentAssignmentResponse"];
+                };
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -656,6 +760,15 @@ export interface operations {
                     "application/json": components["schemas"]["AppointmentResponse"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     endTemporary: {
@@ -673,6 +786,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
             };
         };
     };
@@ -694,6 +816,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberListItem"][];
+                };
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -720,6 +851,15 @@ export interface operations {
                     "application/json": components["schemas"]["MemberDetails"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     get: {
@@ -740,6 +880,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberDetails"];
+                };
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -768,6 +917,15 @@ export interface operations {
                     "application/json": components["schemas"]["MemberDetails"];
                 };
             };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     deactivate: {
@@ -787,6 +945,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
             };
         };
     };
@@ -809,6 +976,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberFifsFee"];
+                };
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -835,6 +1011,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberRole"];
+                };
+            };
+            /** @description Fel, som RFC 9457 ProblemDetail */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };

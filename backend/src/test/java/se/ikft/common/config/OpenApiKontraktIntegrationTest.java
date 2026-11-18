@@ -2,6 +2,7 @@ package se.ikft.common.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.IOException;
@@ -19,6 +20,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -123,7 +125,60 @@ class OpenApiKontraktIntegrationTest {
 			.containsExactlyInAnyOrder("birthDate", "firstName", "homeMunicipality", "lastName");
 	}
 
+	@Test
+	void varjeEndpointHarProblemDetailSomFelsvar() throws Exception {
+		JsonNode api = MAPPER.readTree(beskrivning());
+		JsonNode problem = api.path("components").path("schemas").path("ProblemDetail");
+
+		assertThat(namnen(problem.path("required"))).containsExactly("status");
+		assertThat(egenskaper(problem.path("properties"))).containsExactlyInAnyOrder("type", "title", "status", "detail",
+				"instance", "errors", "mustChangePassword");
+
+		Set<String> utanFelsvar = new TreeSet<>();
+		api.path("paths").properties().forEach(path -> path.getValue().properties().forEach(operation -> {
+			JsonNode schema = operation.getValue()
+				.path("responses")
+				.path("default")
+				.path("content")
+				.path("application/problem+json")
+				.path("schema");
+			if (!"#/components/schemas/ProblemDetail".equals(schema.path("$ref").asString())) {
+				utanFelsvar.add(operation.getKey().toUpperCase(Locale.ROOT) + " " + path.getKey());
+			}
+		}));
+		assertThat(utanFelsvar).as("endpoints utan ProblemDetail som felsvar").isEmpty();
+	}
+
+	/**
+	 * Schemat ska stämma med det backenden faktiskt svarar, annars blir felkroppen i klienten fel typad. Ett 400 för
+	 * ogiltiga fält är det svar som har flest egenskaper.
+	 */
+	@Test
+	void ettVerkligtFelsvarHarBaraEgenskaperSomSchemaetBeskriver() throws Exception {
+		JsonNode problem = MAPPER.readTree(beskrivning()).path("components").path("schemas").path("ProblemDetail");
+		String svar = mockMvc
+			.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("{}"))
+			.andExpect(status().isBadRequest())
+			.andReturn()
+			.getResponse()
+			.getContentAsString(StandardCharsets.UTF_8);
+		JsonNode kropp = MAPPER.readTree(svar);
+
+		assertThat(egenskaper(kropp)).isSubsetOf(egenskaper(problem.path("properties")));
+		assertThat(namnen(problem.path("required"))).isSubsetOf(egenskaper(kropp));
+		assertThat(kropp.path("errors")).isNotEmpty();
+		kropp.path("errors")
+			.forEach(fel -> assertThat(egenskaper(fel))
+				.isEqualTo(egenskaper(problem.path("properties").path("errors").path("items").path("properties"))));
+	}
+
 	// ---- Hjälpmetoder
+
+	private static Set<String> egenskaper(JsonNode objekt) {
+		Set<String> namn = new TreeSet<>();
+		objekt.propertyNames().forEach(namn::add);
+		return namn;
+	}
 
 	private static Set<String> namnen(JsonNode lista) {
 		Set<String> namn = new TreeSet<>();

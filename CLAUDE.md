@@ -61,6 +61,15 @@ och testerna använder Testcontainers.
 `spring-boot:run` kräver miljövariabeln `IKFT_SECURITY_JWT_SECRET` (base64, minst 32 byte, t.ex.
 `openssl rand -base64 32`). Repot har ingen standardnyckel. Testerna slumpar en egen nyckel.
 
+Kör i `admin/` (Node 22):
+
+- `npm install` – installera. CI kör `npm ci`, så `package-lock.json` måste stämma. Peer-varningar duger inte:
+  `openapi-typescript` kräver TypeScript 5, så TypeScript står på 5.9.x.
+- `npm run dev` – Vite på `localhost:5173`, med `/api` proxad till backenden på `localhost:8080` (starta den först)
+- `npm run lint`, `npm run typecheck`, `npm test` (Vitest) och `npm run build`
+- På Windows: kör Vitest från PowerShell eller en terminal där sökvägen har stor enhetsbokstav (`C:\`). I Git Bash
+  (`/c/...`) hittar Vitest inte sin körare ("failed to find the runner").
+
 ## Konventioner
 
 - Databasändringar görs med Flyway. JPA körs med `open-in-view: false` och
@@ -98,8 +107,12 @@ och testerna använder Testcontainers.
 - API-kontraktet: ändrar du en endpoint eller en svarsklass misslyckas `OpenApiKontraktIntegrationTest`. Kör
   `./mvnw test -Dtest=OpenApiKontraktIntegrationTest -Dopenapi.update=true`, därefter `npm run gen:api` i `admin/`, och
   checka in `admin/src/api/openapi.json` och `schema.d.ts`. Ett svarsfält som kan vara null markeras
-  `@Schema(nullable = true)`, annars blir det obligatoriskt i TypeScript-typerna. Se
+  `@Schema(nullable = true)`, annars blir det obligatoriskt i TypeScript-typerna. Varje endpoint har ett
+  `default`-svar med `ProblemDetail` (`OpenApiConfig`), så felkroppen är typad i klienten. Se
   [docs/07-teststrategi.md](docs/07-teststrategi.md#kontrakt-mellan-backend-och-frontend).
+- Admin-appens API-klient (`admin/src/api/client.ts`) sköter CSRF, förnyelse vid 401 och lösenordsbyte vid 403. Sidor
+  anropar `useApi()` och behöver inte hantera det själva. Mockar i tester (MSW) använder `endpoint(...)`,
+  `accountInfo(...)` och `problem(...)` ur `src/test/mocks.ts`, som är typade efter kontraktet.
 - Bidragsregler testas med gränsvärden (59/60 minuter, 2/3 deltagare, ålder 6/7/25/26).
 - Playwright (E2E) läggs i `e2e/` när admin-appen har en första sida. Håll antalet E2E-tester litet
   och täck bara de viktigaste flödena. Valideringsvarianter och rollmatriser testas i backend, inte i webbläsaren.
