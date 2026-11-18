@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { accountInfo, endpoint, passwordChangeRequired, problem, setCsrfCookie } from "../test/mocks";
 import { server } from "../test/server";
-import { createApiClient } from "./client";
+import { createApiClient, SessionRefreshUnavailableError } from "./client";
 import { CSRF_HEADER } from "./csrf";
 
 const ME = endpoint("/api/v1/auth/me");
@@ -216,18 +216,30 @@ describe("401 och förnyelse", () => {
     expect(refreshAnrop).toBe(2);
   });
 
-  it("säger inte att sessionen är slut när förnyelsen inte går att nå eller ger serverfel", async () => {
+  it.each([
+    ["serverfel", () => problem(500, "Ett oväntat fel inträffade.")],
+    ["spärr", () => problem(429, "För många försök.")],
+    ["CSRF-fel", () => problem(403, "Ogiltig CSRF-token.")],
+    ["nätverksfel", () => HttpResponse.error()],
+  ])("kastar och säger inte att sessionen är slut när förnyelsen ger %s", async (_namn, svar) => {
     server.use(
       http.get(ME, () => problem(401, "Inloggning krävs.")),
-      http.post(REFRESH, () => problem(500, "Ett oväntat fel inträffade.")),
+      http.post(REFRESH, svar),
     );
 
-    const { response } = await newClient().GET("/api/v1/auth/me");
-    expect(response.status).toBe(401);
+    await expect(newClient().GET("/api/v1/auth/me")).rejects.toBeInstanceOf(SessionRefreshUnavailableError);
 
-    server.use(http.post(REFRESH, () => HttpResponse.error()));
-    const { response: andra } = await newClient().GET("/api/v1/auth/me");
-    expect(andra.status).toBe(401);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it("kastar när det omgjorda anropet inte når fram efter en lyckad förnyelse", async () => {
+    let anrop = 0;
+    server.use(
+      http.get(ME, () => (++anrop === 1 ? problem(401, "Inloggning krävs.") : HttpResponse.error())),
+      http.post(REFRESH, () => HttpResponse.json(accountInfo())),
+    );
+
+    await expect(newClient().GET("/api/v1/auth/me")).rejects.toThrow();
 
     expect(onSessionExpired).not.toHaveBeenCalled();
   });

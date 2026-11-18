@@ -6,6 +6,18 @@ import { isPasswordChangeRequired } from "./types";
 
 export type ApiClient = Client<paths>;
 
+/**
+ * Ett anrop gav 401, men det gick inte att avgöra om sessionen gäller, eftersom förnyelsen inte gick att nå eller
+ * gav serverfel. Anropet kastar då, på samma sätt som vid ett nätverksfel. Ett fel på det omgjorda anropet efter en
+ * lyckad förnyelse kastar också, som ett vanligt nätverksfel.
+ */
+export class SessionRefreshUnavailableError extends Error {
+  constructor() {
+    super("Sessionen kunde inte förnyas just nu.");
+    this.name = "SessionRefreshUnavailableError";
+  }
+}
+
 export interface ApiClientOptions {
   /** Backendens adress. Som standard samma ursprung som appen, eftersom /api ligger bakom samma värd. */
   baseUrl?: string;
@@ -67,8 +79,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       if (response.ok) {
         return "renewed";
       }
-      // Bara ett avslag betyder att sessionen är slut. Ett serverfel eller en spärr säger inget om den.
-      return response.status === 401 || response.status === 403 ? "rejected" : "unavailable";
+      // Bara ett 401 betyder att förnyelsecookien inte gäller längre, alltså att sessionen är slut. Ett serverfel,
+      // en spärr (429) eller ett CSRF-fel (403) säger inget om den.
+      return response.status === 401 ? "rejected" : "unavailable";
     } catch {
       return "unavailable";
     }
@@ -90,6 +103,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       const copy = copies.get(request);
       if (response.status === 401 && copy) {
         const outcome = await refreshSession();
+        if (outcome === "unavailable") {
+          // Vi vet inte om sessionen gäller. Ett kast, som vid vilket nätverksfel som helst, hindrar att anroparen tror
+          // att användaren är utloggad, och att appen skickar användaren till inloggningen i onödan.
+          throw new SessionRefreshUnavailableError();
+        }
         if (outcome === "renewed") {
           applyCsrfToken(copy); // inloggningen och förnyelsen kan ha bytt token
           result = await fetchImpl(copy);

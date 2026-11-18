@@ -1,9 +1,9 @@
-﻿{
+{
   "name": "ikft-admin",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Admin-appen fÃ¶r IKFT.",
+  "description": "Admin-appen för IKFT.",
   "engines": {
     "node": ">=22.12"
   },

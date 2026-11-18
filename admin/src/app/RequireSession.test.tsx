@@ -80,6 +80,22 @@ describe("appens start", () => {
     expect(await screen.findByRole("heading", { name: "Inloggning" })).toBeInTheDocument();
   });
 
+  it("skickar inte en användare till inloggningen när förnyelsen bara är otillgänglig", async () => {
+    let refreshAnrop = 0;
+    let meAnrop = 0;
+    server.use(
+      http.get(ME, () => (++meAnrop <= 1 ? problem(401, "Inloggning krävs.") : HttpResponse.json(accountInfo()))),
+      http.post(REFRESH, () => (++refreshAnrop === 1 ? problem(500, "Ett oväntat fel inträffade.") : HttpResponse.json(accountInfo()))),
+    );
+
+    const { router } = renderApp("/");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Det gick inte att hämta inloggningen");
+    expect(router.state.location.pathname).toBe("/");
+    await userEvent.click(screen.getByRole("button", { name: "Försök igen" }));
+    expect(await screen.findByRole("heading", { name: "Översikt" })).toBeInTheDocument();
+  });
+
   it("visar ett fel med möjlighet att försöka igen när kontot inte går att hämta", async () => {
     let anrop = 0;
     server.use(
