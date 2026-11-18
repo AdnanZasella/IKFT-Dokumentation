@@ -2,14 +2,14 @@
 
 Hemsida och internt dokumentationssystem för Islamiska Kulturföreningen i Trollhättan.
 Specifikationen finns i [docs/00-oversikt.md](docs/00-oversikt.md), som länkar till
-`docs/01-*.md` till `docs/07-*.md`. Läs rätt delfil innan du ändrar något som berör
+`docs/01-*.md` till `docs/08-*.md`. Läs rätt delfil innan du ändrar något som berör
 verksamhetsregler, roller eller API. Läs [docs/07-teststrategi.md](docs/07-teststrategi.md) innan du skriver eller
-granskar tester.
+granskar tester och [docs/08-frontend.md](docs/08-frontend.md) innan du bygger admin-appen eller hemsidan.
 
 ## Struktur
 
 - `backend/` – Spring Boot 4.1.1, Java 21, Maven, paket `se.ikft`.
-- `docs/` – specifikationen och teststrategin, uppdelad i åtta filer.
+- `docs/` – specifikationen, teststrategin och frontendplanen, uppdelad i nio filer.
 - `.claude/agents/` – `testgranskare` (granskar att tester finns på rätt nivå, kör före varje PR) och
   `e2e-utforskare` (tar fram E2E-test med Playwright MCP, först när det finns en frontend). `.mcp.json` har
   Playwright MCP.
