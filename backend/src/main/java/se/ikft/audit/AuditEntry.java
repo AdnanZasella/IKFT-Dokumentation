@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import se.ikft.account.Role;
 
 /**
@@ -13,6 +15,7 @@ import se.ikft.account.Role;
  * @param holderName innehavarens namn då ändringen gjordes, eller null om kontot saknade innehavare
  * @param changes vilka fält som ändrades, i den ordning de loggades
  */
-public record AuditEntry(UUID id, AuditEntity entityType, UUID entityId, AuditAction action, Role accountRole,
-		String holderName, Instant createdAt, List<FieldChange> changes) {
+public record AuditEntry(UUID id, AuditEntity entityType, UUID entityId, AuditAction action,
+		@Schema(nullable = true) Role accountRole, @Schema(nullable = true) String holderName, Instant createdAt,
+		List<FieldChange> changes) {
 }

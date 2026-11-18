@@ -1,0 +1,924 @@
+{
+  "components" : {
+    "schemas" : {
+      "AccountInfo" : {
+        "properties" : {
+          "holderName" : {
+            "type" : [ "string", "null" ]
+          },
+          "mustChangePassword" : {
+            "type" : "boolean"
+          },
+          "role" : {
+            "enum" : [ "ADMIN", "DOCUMENTER" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "mustChangePassword", "role" ],
+        "type" : "object"
+      },
+      "AppointRequest" : {
+        "properties" : {
+          "memberId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "startDate" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        },
+        "required" : [ "memberId", "startDate" ],
+        "type" : "object"
+      },
+      "AppointmentResponse" : {
+        "properties" : {
+          "endDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "memberId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "memberName" : {
+            "type" : "string"
+          },
+          "startDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "ORDINARY", "TEMPORARY" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "endDate", "id", "memberId", "memberName", "startDate", "type" ],
+        "type" : "object"
+      },
+      "AuditEntry" : {
+        "properties" : {
+          "accountRole" : {
+            "enum" : [ "ADMIN", "DOCUMENTER" ],
+            "type" : [ "string", "null" ]
+          },
+          "action" : {
+            "enum" : [ "CREATED", "UPDATED", "DEACTIVATED" ],
+            "type" : "string"
+          },
+          "changes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FieldChange"
+            },
+            "type" : "array"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "entityId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "entityType" : {
+            "enum" : [ "MEMBER", "ACCOUNT", "DOCUMENTER_ASSIGNMENT" ],
+            "type" : "string"
+          },
+          "holderName" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "action", "changes", "createdAt", "entityId", "entityType", "id" ],
+        "type" : "object"
+      },
+      "ChangePasswordRequest" : {
+        "properties" : {
+          "currentPassword" : {
+            "maxLength" : 256,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "newPassword" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "currentPassword", "newPassword" ],
+        "type" : "object"
+      },
+      "CurrentAssignmentResponse" : {
+        "properties" : {
+          "assigned" : {
+            "type" : "boolean"
+          },
+          "endDate" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "memberId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "memberName" : {
+            "type" : [ "string", "null" ]
+          },
+          "nextYearAssigned" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "reminder" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "type" : {
+            "enum" : [ "ORDINARY", "TEMPORARY" ],
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "assigned" ],
+        "type" : "object"
+      },
+      "FieldChange" : {
+        "properties" : {
+          "after" : {
+            "type" : [ "string", "null" ]
+          },
+          "before" : {
+            "type" : [ "string", "null" ]
+          },
+          "field" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "field" ],
+        "type" : "object"
+      },
+      "LoginRequest" : {
+        "properties" : {
+          "password" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "password", "username" ],
+        "type" : "object"
+      },
+      "MemberAdminListItem" : {
+        "properties" : {
+          "ageGroup" : {
+            "enum" : [ "YOUNGER", "YOUTH", "OLDER" ],
+            "type" : "string"
+          },
+          "birthDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "firstName" : {
+            "type" : "string"
+          },
+          "homeMunicipality" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "lastName" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "ageGroup", "birthDate", "firstName", "homeMunicipality", "id", "lastName", "status" ],
+        "type" : "object"
+      },
+      "MemberDetails" : {
+        "properties" : {
+          "address" : {
+            "type" : [ "string", "null" ]
+          },
+          "ageGroup" : {
+            "enum" : [ "YOUNGER", "YOUTH", "OLDER" ],
+            "type" : "string"
+          },
+          "birthDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "fifsFees" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MemberFifsFee"
+            },
+            "type" : "array"
+          },
+          "firstName" : {
+            "type" : "string"
+          },
+          "guardianConsent" : {
+            "type" : "boolean"
+          },
+          "homeMunicipality" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "lastName" : {
+            "type" : "string"
+          },
+          "memberSince" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "roles" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MemberRole"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "ageGroup", "birthDate", "fifsFees", "firstName", "guardianConsent", "homeMunicipality", "id", "lastName", "roles", "status" ],
+        "type" : "object"
+      },
+      "MemberFifsFee" : {
+        "properties" : {
+          "paidOn" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "year" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "paidOn", "year" ],
+        "type" : "object"
+      },
+      "MemberListItem" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/MemberSummary"
+        }, {
+          "$ref" : "#/components/schemas/MemberAdminListItem"
+        } ]
+      },
+      "MemberRequest" : {
+        "properties" : {
+          "address" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "birthDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "firstName" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "guardianConsent" : {
+            "type" : "boolean"
+          },
+          "homeMunicipality" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "lastName" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "memberSince" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "birthDate", "firstName", "homeMunicipality", "lastName" ],
+        "type" : "object"
+      },
+      "MemberRole" : {
+        "properties" : {
+          "endDate" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "startDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "startDate", "title" ],
+        "type" : "object"
+      },
+      "MemberRoleRequest" : {
+        "properties" : {
+          "endDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "startDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "title" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "startDate", "title" ],
+        "type" : "object"
+      },
+      "MemberSummary" : {
+        "properties" : {
+          "ageGroup" : {
+            "enum" : [ "YOUNGER", "YOUTH", "OLDER" ],
+            "type" : "string"
+          },
+          "firstName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "lastName" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "ageGroup", "firstName", "id", "lastName" ],
+        "type" : "object"
+      },
+      "SetPasswordRequest" : {
+        "properties" : {
+          "code" : {
+            "maxLength" : 32,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "newPassword" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "username" : {
+            "maxLength" : 50,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "newPassword", "username" ],
+        "type" : "object"
+      },
+      "SetupCodeResponse" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "validUntil" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "validUntil" ],
+        "type" : "object"
+      },
+      "TemporaryAppointRequest" : {
+        "properties" : {
+          "endDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "memberId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "endDate", "memberId" ],
+        "type" : "object"
+      }
+    }
+  },
+  "info" : {
+    "title" : "IKFT API",
+    "version" : "v1"
+  },
+  "openapi" : "3.1.0",
+  "paths" : {
+    "/api/v1/accounts/{id}/setup-code" : {
+      "post" : {
+        "operationId" : "setupCode",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SetupCodeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "account-setup-code-controller" ]
+      }
+    },
+    "/api/v1/audit-log" : {
+      "get" : {
+        "operationId" : "history",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "entity",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "MEMBER", "ACCOUNT", "DOCUMENTER_ASSIGNMENT" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AuditEntry"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      }
+    },
+    "/api/v1/auth/change-password" : {
+      "post" : {
+        "operationId" : "changePassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountInfo"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/login" : {
+      "post" : {
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountInfo"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/logout" : {
+      "post" : {
+        "operationId" : "logout",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/me" : {
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountInfo"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/refresh" : {
+      "post" : {
+        "operationId" : "refresh",
+        "parameters" : [ {
+          "in" : "cookie",
+          "name" : "__Secure-ikft_refresh",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountInfo"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/set-password" : {
+      "post" : {
+        "operationId" : "setPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/documenter-assignment" : {
+      "post" : {
+        "operationId" : "appoint",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AppointRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppointmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "documenter-assignment-controller" ]
+      }
+    },
+    "/api/v1/documenter-assignment/current" : {
+      "get" : {
+        "operationId" : "current",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CurrentAssignmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "documenter-assignment-controller" ]
+      }
+    },
+    "/api/v1/documenter-assignment/temporary" : {
+      "delete" : {
+        "operationId" : "endTemporary",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "documenter-assignment-controller" ]
+      },
+      "post" : {
+        "operationId" : "appointTemporary",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TemporaryAppointRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AppointmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "documenter-assignment-controller" ]
+      }
+    },
+    "/api/v1/members" : {
+      "get" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ACTIVE", "INACTIVE" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/MemberListItem"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      },
+      "post" : {
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberDetails"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/members/{id}" : {
+      "delete" : {
+        "operationId" : "deactivate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      },
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberDetails"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberDetails"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/members/{id}/fifs-fees/{year}" : {
+      "put" : {
+        "operationId" : "markFifsFeePaid",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "year",
+          "required" : true,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberFifsFee"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/members/{id}/roles" : {
+      "post" : {
+        "operationId" : "addRole",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberRoleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberRole"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      }
+    }
+  }
+}

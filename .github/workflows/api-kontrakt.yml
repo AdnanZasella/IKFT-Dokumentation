@@ -1,0 +1,50 @@
+name: API-kontrakt
+
+# Kontrollerar att TypeScript-typerna i admin-appen är genererade ur den incheckade OpenAPI-beskrivningen.
+# Att beskrivningen i sin tur stämmer med backendens kod prövas av backend-ci (OpenApiKontraktIntegrationTest).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "admin/**"
+      - ".github/workflows/api-kontrakt.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-kontrakt-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  typer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      - name: Generera typerna
+        run: npm run gen:api
+
+      # git status fångar också en fil som aldrig har checkats in, vilket git diff inte gör.
+      - name: Kontrollera att schema.d.ts är aktuell
+        run: |
+          if [ -n "$(git status --porcelain -- src/api)" ]; then
+            git status --short -- src/api
+            git diff -- src/api
+            echo "::error::admin/src/api/schema.d.ts är inte genererad ur openapi.json. Kör 'npm run gen:api' i admin/ och checka in resultatet."
+            exit 1
+          fi
