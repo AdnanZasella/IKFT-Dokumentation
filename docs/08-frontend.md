@@ -47,6 +47,30 @@ utseendet innan det publika API:et (Fas 4) finns.
   lösenordsbyte och utloggning, tills flaggan är nollställd.
 - Navigeringen döljer det som rollen inte får använda, men det är bara en hjälp: behörigheten kontrolleras alltid i
   backenden.
+- **Inloggningssidan** (`/login`) hämtar kontot först, eftersom det anropet ger CSRF-cookien som inloggningen kräver.
+  Den som redan är inloggad skickas till startsidan. Efter en lyckad inloggning läggs kontot ur svaret i cachen
+  (`ME_KEY`) och användaren skickas vidare. Kontot hämtas inte på nytt: cachen har `staleTime: Infinity` och skulle
+  annars säga "utloggad" tills hämtningen var klar.
+- **Fel** visas i klartext: backendens `detail` för fel i begäran (till exempel "Fel användarnamn eller lösenord."),
+  en egen text för serverfel och nätverksfel, och vid 429 hur länge spärren varar (ur `Retry-After`). Fel som backenden
+  pekar ut per fält (`errors`) visas vid fältet. Knappen är avstängd medan formuläret skickas.
+- **Det tvingade lösenordsbytet** (`/change-password`) har tre fält (nuvarande, nytt, upprepa nytt) och utloggning.
+  Klienten kontrollerar bara att fälten är ifyllda och att det nya lösenordet skrevs lika två gånger. Längd och övriga
+  regler kommer ur backendens svar, så de kan ändras i konfigurationen utan att klienten följer med.
+
+### Utseende
+
+Admin-appen är ett verktyg och behöver inte se ut som hemsidan: lugn, läsbar och utan prydnad.
+
+- **Designvariabler** ligger i `admin/src/styles.css` (Tailwinds `@theme`): ljus pappersbakgrund, mörk bläckfärg, en
+  dämpad grön accent och en röd för fel. Alla färgpar för text ger minst 4,5:1 i kontrast och kanter på fält minst 3:1
+  (WCAG AA). Axe-testet i `e2e/` fångar om en ändring bryter det.
+- **Typsnitt:** systemets, så ingen typsnittstjänst anropas och inga typsnittsfiler behövs.
+- **Former:** tunna kanter, små rundningar, inga skuggor och inga gradienter. Synlig fokusmarkering på allt som går att
+  tangentbordsstyra.
+- **Logiska egenskaper** (`ps-`, `pe-`, `text-start`), så att samma utseende fungerar höger-till-vänster.
+- **Byggstenar** i `admin/src/ui/`: `TextField` (etikett och fel kopplade till fältet), `Button` och `Alert`. Radix
+  läggs till när första dialogen eller menyn behövs (skalet, #49).
 
 ### Körmiljö
 
@@ -80,7 +104,7 @@ Dokumenteraren har bara ett urval: Översikt, Sammankomster, Möten, Medlemmar (
 
 ### Första sidorna
 
-1. Inloggning, och därefter tvingat lösenordsbyte.
+1. Inloggning, och därefter tvingat lösenordsbyte (klart, #48).
 2. Skal med navigering, och Översikt.
 3. Medlemmar, Dokumenterare, Ändringslogg och Konto.
 

@@ -1,0 +1,98 @@
+name: E2E
+
+# Playwright mot admin-appen, den riktiga backenden och en riktig Postgres (docs/07-teststrategi.md, nivå 4).
+# Backenden startas med profilen e2e (kända lösenord och påhittade medlemmar, bara i src/test) och en databas från
+# Testcontainers. Jobbet bygger backenden själv, så det körs vid sidan av backend-ci.yml och inte efter det.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "admin/**"
+      - "e2e/**"
+      - ".github/workflows/e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            admin/package-lock.json
+            e2e/package-lock.json
+
+      - name: Installera admin-appen
+        working-directory: admin
+        run: npm ci
+
+      - name: Installera E2E-testerna
+        working-directory: e2e
+        run: npm ci
+
+      - name: Typkontroll av E2E-testerna
+        working-directory: e2e
+        run: npm run typecheck
+
+      - name: Installera Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      # Docker finns på ubuntu-latest, så Testcontainers fungerar. Backenden körs i bakgrunden under hela jobbet.
+      - name: Starta backenden (profilen e2e)
+        working-directory: backend
+        run: nohup ./mvnw --batch-mode spring-boot:test-run -Dspring-boot.run.profiles=e2e > ../backend-e2e.log 2>&1 &
+
+      # Readiness blir UP först när alla ApplicationRunner har körts, alltså efter att profilen e2e har satt lösenorden.
+      # Den vanliga hälsokontrollen kan vara UP redan innan.
+      - name: Vänta på backenden
+        run: |
+          for i in $(seq 1 120); do
+            if curl -fsS http://localhost:8080/actuator/health/readiness | grep -q '"status":"UP"'; then
+              echo "Backenden är uppe efter cirka $((i * 2)) sekunder."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backenden startade inte inom fyra minuter. Slutet av loggen:"
+          tail -n 100 backend-e2e.log
+          exit 1
+
+      # Playwright startar Vite för admin-appen (webServer i playwright.config.ts).
+      - name: Kör E2E-testerna
+        working-directory: e2e
+        run: npx playwright test
+
+      # Sparas även när något fallerar: HTML-rapport, trace och video, samt backendens logg.
+      - name: Spara rapporter
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-rapporter
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            backend-e2e.log
+          retention-days: 14
+          if-no-files-found: ignore

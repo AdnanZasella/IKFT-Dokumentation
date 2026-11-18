@@ -73,13 +73,6 @@ describe("appens start", () => {
     expect(await screen.findByRole("heading", { name: "Inloggning" })).toBeInTheDocument();
   });
 
-  it("visar inloggningen utan att hämta kontot", async () => {
-    // Ingen mock för /auth/me: ett anrop dit fäller testet (onUnhandledFrame: "error").
-    renderApp("/login");
-
-    expect(await screen.findByRole("heading", { name: "Inloggning" })).toBeInTheDocument();
-  });
-
   it("skickar inte en användare till inloggningen när förnyelsen bara är otillgänglig", async () => {
     let refreshAnrop = 0;
     let meAnrop = 0;

@@ -1,0 +1,6 @@
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+# Sparade inloggningar (storageState) per roll. Skapas av tests/auth.setup.ts.
+.auth/

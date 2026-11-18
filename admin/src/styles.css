@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/*
+  Designvariabler för admin-appen. Appen är ett verktyg: lugn, läsbar och utan prydnad (docs/08-frontend.md).
+  Färgerna ger minst kontrast 4.5:1 (WCAG AA) för text mot bakgrunden. Typsnittet är systemets, så ingen
+  typsnittstjänst anropas. Använd logiska egenskaper (ps-, pe-, ms-, me-, text-start), så att samma
+  utseende fungerar höger-till-vänster.
+*/
+@theme {
+  --color-paper: #fbfaf7;
+  --color-surface: #ffffff;
+  --color-ink: #1d2420;
+  --color-muted: #55605a;
+  /* Kanter på fält och knappar: minst 3:1 mot bakgrunden (WCAG 1.4.11). */
+  --color-line: #7a847c;
+  --color-accent: #2f6b4f;
+  --color-accent-strong: #234f3b;
+  --color-danger: #a12a2a;
+  --color-danger-surface: #fbeeee;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+  }
+
+  /* Synlig fokusmarkering för tangentbordsanvändare. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}

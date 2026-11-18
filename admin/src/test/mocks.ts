@@ -23,12 +23,29 @@ const TITLES: Record<number, string> = {
   403: "Forbidden",
   404: "Not Found",
   409: "Conflict",
+  429: "Too Many Requests",
+  500: "Internal Server Error",
 };
 
 /** Ett felsvar i samma form som backenden (RFC 9457). Kroppen är typad efter kontraktet. */
-export function problem(status: number, detail: string, extra: Partial<ProblemDetail> = {}) {
+export function problem(
+  status: number,
+  detail: string,
+  extra: Partial<ProblemDetail> = {},
+  headers: Record<string, string> = {},
+) {
   const body: ProblemDetail = { type: "about:blank", title: TITLES[status] ?? "Error", status, detail, ...extra };
-  return HttpResponse.json(body, { status, headers: { "Content-Type": "application/problem+json" } });
+  return HttpResponse.json(body, { status, headers: { "Content-Type": "application/problem+json", ...headers } });
+}
+
+/** Så svarar backenden under en spärr: 429 med `Retry-After` i sekunder. */
+export function tooManyRequests(retryAfterSeconds: number) {
+  return problem(
+    429,
+    "För många inloggningsförsök. Försök igen senare.",
+    {},
+    { "Retry-After": String(retryAfterSeconds) },
+  );
 }
 
 /** Så svarar backenden när lösenordet måste bytas. */
