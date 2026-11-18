@@ -99,6 +99,9 @@ Allt annat, till exempel valideringsfel och varje rollkombination, hör hemma i 
 - Förberedelser och städning görs via API:et med `ApiSession` (`support/api.ts`), som loggar in på nytt för varje
   test. Själva flödet som testas går alltid genom gränssnittet. Admin skapar till exempel en medlem och utser den till
   dokumenterare via API:et, och det gör att Dokumenterare-kontot måste byta lösenord vid nästa inloggning.
+- E2E-databasen är engångs och rader städas inte bort (medlemmar raderas aldrig, de inaktiveras). Ett test får därför
+  inte anta att det finns exakt de tre medlemmar som profilen skapar, eller att Dokumenterare saknar innehavare:
+  sök på unika namn från det egna testet.
 - Ett test som ändrar ett delat konto sätter tillbaka det i `afterEach`, så att det går att köra om mot samma backend.
   Ett innehavarbyte gör kontots sparade inloggning ogiltig (tokenversionen räknas upp), så testet skapar om den.
 - Playwrights webbläsare tillåter `Secure`-cookies på `localhost`, så `__Host-`-cookies i `storageState` fungerar över

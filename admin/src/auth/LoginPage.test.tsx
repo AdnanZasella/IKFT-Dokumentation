@@ -218,7 +218,7 @@ describe("inloggningssidan", () => {
     expect(anrop).toBe(1);
   });
 
-  it("tar bort det gamla felet när användaren försöker igen", async () => {
+  it("tar bort det gamla felet så fort användaren försöker igen", async () => {
     utloggad();
     let anrop = 0;
     server.use(
@@ -227,17 +227,21 @@ describe("inloggningssidan", () => {
         if (anrop === 1) {
           return problem(401, "Fel användarnamn eller lösenord.");
         }
-        await delay(150);
-        return HttpResponse.json(accountInfo());
+        // Långsamt, så att vi hinner se sidan medan andra försöket pågår.
+        await delay(300);
+        return problem(429, "Spärrad.");
       }),
     );
     renderApp("/login");
     await fyllIOchLoggaIn();
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Fel användarnamn eller lösenord.");
 
     await userEvent.click(screen.getByRole("button", { name: "Logga in" }));
 
-    expect(await screen.findByRole("heading", { name: "Översikt" })).toBeInTheDocument();
+    // Medan andra försöket pågår visas inget gammalt fel, och när det är klart bara det nya.
+    expect(await screen.findByRole("button", { name: "Loggar in…" })).toBeDisabled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("För många misslyckade försök");
+    expect(screen.queryByText("Fel användarnamn eller lösenord.")).not.toBeInTheDocument();
   });
 });
