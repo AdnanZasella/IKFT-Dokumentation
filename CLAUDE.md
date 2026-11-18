@@ -15,7 +15,9 @@ granskar tester och [docs/08-frontend.md](docs/08-frontend.md) innan du bygger a
   Playwright MCP.
 - `design/` – förebild och material för hemsidans utseende (skärmbilder, logotyp, texter). Mappen är
   publik, så inget där får vara privat. Behövs först i fas 4.
-- Frontend (publik hemsida och admin-app) finns inte än.
+- `admin/` – admin-appen (React, Vite). Än så länge finns bara API-kontraktet (`src/api/openapi.json` och
+  `schema.d.ts`) och ett minimalt `package.json`. Appen byggs i #47–#52.
+- `web/` (hemsidan, Astro) och `e2e/` finns inte än (#53 och #48).
 
 ## Läget
 
@@ -30,6 +32,11 @@ och uppstart) som byter innehavare när ett uppdrag börjar eller löper ut, och
 [Öppna frågor](docs/06-oppna-fragor.md). Flaggan för betald avgift gäller än så länge bara moskéavgiften
 via FIFS. Föreningens egen medlemsavgift läggs till när medlemskapet är bestämt. Ändringsloggen sparar
 bara födelsedatum, hemkommun och status med värden, övriga fält bara som ändrade.
+
+Frontend: planen finns i [docs/08-frontend.md](docs/08-frontend.md) (admin-appen i React, hemsidan i Astro,
+admin först och hemsidan som prototyp med exempeldata). Issues #46–#53, ordning i #31. #46 (OpenAPI-kontraktet) är
+klart. Nästa är #47 (admin-appens grund), som också ska ge typade felsvar (`ProblemDetail`, se kommentaren på #47).
+Backendens API för sammankomster, möten och det publika API:et finns inte än (Fas 2–4).
 
 Backend är uppdelad i paket per funktion under `se.ikft`. Varje paket har en `package-info.java`
 som beskriver vad paketet ansvarar för:
