@@ -1,5 +1,7 @@
 package se.ikft.audit;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Ett fält som ändrades. Värdena sparas bara när de behövs för att kunna visa hur en siffra i ett
  * bidragsunderlag uppstod. För övriga fält, som namn och adress, används {@link #named(String)}, som bara
@@ -9,7 +11,8 @@ package se.ikft.audit;
  * @param before värdet före ändringen, eller null om värdet inte sparas eller saknades
  * @param after värdet efter ändringen, eller null om värdet inte sparas eller togs bort
  */
-public record FieldChange(String field, String before, String after) {
+public record FieldChange(String field, @Schema(nullable = true) String before,
+		@Schema(nullable = true) String after) {
 
 	/** Gränsen i kolumnerna {@code audit_log_change.before_value} och {@code after_value}. */
 	static final int MAX_VALUE_LENGTH = 255;

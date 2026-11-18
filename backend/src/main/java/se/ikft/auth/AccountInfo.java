@@ -1,5 +1,7 @@
 package se.ikft.auth;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import se.ikft.account.Role;
 
 /**
@@ -10,5 +12,5 @@ import se.ikft.account.Role;
  * @param mustChangePassword om lösenordet måste bytas innan något annat är tillåtet, det vill säga efter ett
  *            innehavarbyte
  */
-record AccountInfo(Role role, String holderName, boolean mustChangePassword) {
+record AccountInfo(Role role, @Schema(nullable = true) String holderName, boolean mustChangePassword) {
 }

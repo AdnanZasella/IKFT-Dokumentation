@@ -103,9 +103,17 @@ Allt annat, till exempel valideringsfel och varje rollkombination, hör hemma i 
 
 ## Kontrakt mellan backend och frontend
 
-När frontenden startar genereras TypeScript-typerna ur backendens OpenAPI-beskrivning (springdoc och
-`openapi-typescript`). CI kontrollerar att den incheckade filen är aktuell, så att en ändrad endpoint stoppar
-bygget i stället för att ge en tyst bugg. Beslutet tas när frontenden startar, inte före.
+TypeScript-typerna i admin-appen genereras ur backendens OpenAPI-beskrivning (springdoc och
+`openapi-typescript`). Två incheckade filer håller ihop kontraktet, och CI kontrollerar båda, så att en ändrad
+endpoint stoppar bygget i stället för att ge en tyst bugg:
+
+1. `admin/src/api/openapi.json` skapas ur backendens kod. `OpenApiKontraktIntegrationTest` misslyckas när den
+   skiljer sig från koden. Uppdatera den med `./mvnw test -Dtest=OpenApiKontraktIntegrationTest -Dopenapi.update=true`.
+2. `admin/src/api/schema.d.ts` genereras ur den med `npm run gen:api` i `admin/`. Arbetsflödet `api-kontrakt`
+   misslyckas när den inte är aktuell.
+
+Beskrivningen är avstängd i drift (`OpenApiAvstangdIntegrationTest`). Alla svarsfält är obligatoriska utom de som är
+markerade `@Schema(nullable = true)`.
 
 ## CI
 
