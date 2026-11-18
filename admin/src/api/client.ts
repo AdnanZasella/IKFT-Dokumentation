@@ -34,7 +34,7 @@ export interface ApiClientOptions {
  * användarnamn eller lösenord, själva förnyelsen, utloggningen och engångskoden. Adresserna är de i
  * `SecurityConfig.WITHOUT_LOGIN`.
  */
-const NO_REFRESH_PATHS: ReadonlySet<string> = new Set([
+const NO_REFRESH_PATHS: ReadonlySet<keyof paths> = new Set<keyof paths>([
   "/api/v1/auth/login",
   "/api/v1/auth/refresh",
   "/api/v1/auth/logout",
@@ -93,7 +93,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
   const session: Middleware = {
     onRequest({ request, schemaPath }) {
-      if (!NO_REFRESH_PATHS.has(schemaPath)) {
+      if (!NO_REFRESH_PATHS.has(schemaPath as keyof paths)) {
         copies.set(request, request.clone());
       }
     },

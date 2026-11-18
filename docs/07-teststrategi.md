@@ -118,7 +118,8 @@ markerade `@Schema(nullable = true)`.
 Varje endpoint har också ett `default`-svar av typen `application/problem+json` med schemat `ProblemDetail`
 (RFC 9457, med `errors` för ogiltiga fält och `mustChangePassword` för det tvingade lösenordsbytet). Det läggs till av
 `OpenApiConfig`, så felkroppen är typad i klienten. `OpenApiKontraktIntegrationTest` kontrollerar att varje endpoint har
-det, och att ett verkligt 400-svar bara har egenskaper som schemat beskriver.
+det, och att ett verkligt 400-svar bara har egenskaper som schemat beskriver. `ProblemDetailSchemaTest` gör samma sak för
+säkerhetskedjans 401, 403 och 403 med `mustChangePassword`.
 
 ## CI
 

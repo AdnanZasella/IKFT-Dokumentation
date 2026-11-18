@@ -14,11 +14,22 @@ const CHANGE_PASSWORD = endpoint("/api/v1/auth/change-password");
 const onSessionExpired = vi.fn();
 const onMustChangePassword = vi.fn();
 
+// MSW bygger om förfrågan och tappar credentials, så den mäts här, innan anropet lämnar klienten.
+const credentialsSkickade: string[] = [];
+
 function newClient() {
-  return createApiClient({ onSessionExpired, onMustChangePassword });
+  return createApiClient({
+    onSessionExpired,
+    onMustChangePassword,
+    fetch: (input, init) => {
+      credentialsSkickade.push(input instanceof Request ? input.credentials : "saknas");
+      return fetch(input, init);
+    },
+  });
 }
 
 beforeEach(() => {
+  credentialsSkickade.length = 0;
   onSessionExpired.mockReset();
   onMustChangePassword.mockReset();
 });
@@ -39,6 +50,7 @@ describe("CSRF", () => {
     });
 
     expect(header).toBe("token-1");
+    expect(credentialsSkickade).toEqual(["include"]); // cookies skickas med
     expect(data).toEqual(accountInfo());
   });
 
@@ -99,12 +111,15 @@ describe("401 och förnyelse", () => {
   it("förnyar sessionen en gång och gör om anropet med innehåll och ny CSRF-token", async () => {
     setCsrfCookie("token-1");
     const seen: { csrf: string | null; body: unknown }[] = [];
+    let refreshCsrf: string | null = null;
     server.use(
       http.post(CHANGE_PASSWORD, async ({ request }) => {
         seen.push({ csrf: request.headers.get(CSRF_HEADER), body: await request.json() });
         return seen.length === 1 ? problem(401, "Inloggning krävs.") : HttpResponse.json(accountInfo());
       }),
-      http.post(REFRESH, () => {
+      http.post(REFRESH, ({ request }) => {
+        // Förnyelsen kräver CSRF-token (SecurityConfig.WITHOUT_LOGIN) och skickar cookies.
+        refreshCsrf = request.headers.get(CSRF_HEADER);
         setCsrfCookie("token-2"); // förnyelsen kan byta token
         return HttpResponse.json(accountInfo());
       }),
@@ -116,9 +131,13 @@ describe("401 och förnyelse", () => {
 
     expect(response.status).toBe(200);
     expect(data).toEqual(accountInfo());
+    expect(refreshCsrf).toBe("token-1");
+    // Det första anropet, förnyelsen och det omgjorda anropet skickar alla cookies.
+    expect(credentialsSkickade).toEqual(["include", "include", "include"]);
+    const body = { currentPassword: "a", newPassword: "b" };
     expect(seen).toEqual([
-      { csrf: "token-1", body: { currentPassword: "a", newPassword: "b" } },
-      { csrf: "token-2", body: { currentPassword: "a", newPassword: "b" } },
+      { csrf: "token-1", body },
+      { csrf: "token-2", body },
     ]);
     expect(onSessionExpired).not.toHaveBeenCalled();
   });
@@ -178,12 +197,26 @@ describe("401 och förnyelse", () => {
 
   it("delar på en förnyelse när flera anrop ger 401 samtidigt", async () => {
     let refreshAnrop = 0;
+    let fatt401 = 0;
     let giltig = false;
+    // Förnyelsen väntar tills båda anropen har fått sitt 401, så att båda hinner begära den. Ingen fast väntetid.
+    let bada401: () => void = () => undefined;
+    const badaHarFatt401 = new Promise<void>((klar) => {
+      bada401 = klar;
+    });
     server.use(
-      http.get(ME, () => (giltig ? HttpResponse.json(accountInfo()) : problem(401, "Inloggning krävs."))),
+      http.get(ME, () => {
+        if (giltig) {
+          return HttpResponse.json(accountInfo());
+        }
+        if (++fatt401 === 2) {
+          bada401();
+        }
+        return problem(401, "Inloggning krävs.");
+      }),
       http.post(REFRESH, async () => {
         refreshAnrop++;
-        await new Promise((klar) => setTimeout(klar, 20));
+        await badaHarFatt401;
         giltig = true;
         return HttpResponse.json(accountInfo());
       }),
@@ -193,7 +226,34 @@ describe("401 och förnyelse", () => {
     const svar = await Promise.all([client.GET("/api/v1/auth/me"), client.GET("/api/v1/auth/me")]);
 
     expect(svar.map((s) => s.response.status)).toEqual([200, 200]);
+    expect(fatt401).toBe(2);
     expect(refreshAnrop).toBe(1);
+  });
+
+  it("ger båda anropen 401 och säger till att sessionen är slut när den delade förnyelsen avslås", async () => {
+    let fatt401 = 0;
+    let bada401: () => void = () => undefined;
+    const badaHarFatt401 = new Promise<void>((klar) => {
+      bada401 = klar;
+    });
+    server.use(
+      http.get(ME, () => {
+        if (++fatt401 === 2) {
+          bada401();
+        }
+        return problem(401, "Inloggning krävs.");
+      }),
+      http.post(REFRESH, async () => {
+        await badaHarFatt401;
+        return problem(401, "Förnyelsen gäller inte längre.");
+      }),
+    );
+    const client = newClient();
+
+    const svar = await Promise.all([client.GET("/api/v1/auth/me"), client.GET("/api/v1/auth/me")]);
+
+    expect(svar.map((s) => s.response.status)).toEqual([401, 401]);
+    expect(onSessionExpired).toHaveBeenCalled();
   });
 
   it("förnyar en gång till vid ett senare 401, när den första förnyelsen är klar", async () => {
@@ -261,6 +321,54 @@ describe("401 och förnyelse", () => {
     expect(response.status).toBe(401);
     expect(error?.detail).toBe("Fel användarnamn eller lösenord.");
     expect(refreshAnrop).toBe(0);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it.each(["/api/v1/auth/logout", "/api/v1/auth/set-password"] as const)(
+    "förnyar inte ett 401 från %s",
+    async (path) => {
+      let refreshAnrop = 0;
+      server.use(
+        http.post(endpoint(path), () => problem(401, "Nej.")),
+        http.post(REFRESH, () => {
+          refreshAnrop++;
+          return HttpResponse.json(accountInfo());
+        }),
+      );
+      const client = newClient();
+
+      const { response } =
+        path === "/api/v1/auth/logout"
+          ? await client.POST(path)
+          : await client.POST(path, { body: { username: "admin", code: "X", newPassword: "y" } });
+
+      expect(response.status).toBe(401);
+      expect(refreshAnrop).toBe(0);
+      expect(onSessionExpired).not.toHaveBeenCalled();
+    },
+  );
+
+  it("förnyar inte ett 401 från förnyelsen själv, och kastar inte i en slinga", async () => {
+    let refreshAnrop = 0;
+    server.use(
+      http.post(REFRESH, () => {
+        refreshAnrop++;
+        return problem(401, "Förnyelsen gäller inte längre.");
+      }),
+    );
+
+    const { response } = await newClient().POST("/api/v1/auth/refresh");
+
+    expect(response.status).toBe(401);
+    expect(refreshAnrop).toBe(1);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it("kastar vid nätverksfel på själva anropet, utan att förnya eller säga att sessionen är slut", async () => {
+    server.use(http.get(ME, () => HttpResponse.error()));
+
+    await expect(newClient().GET("/api/v1/auth/me")).rejects.toThrow();
+
     expect(onSessionExpired).not.toHaveBeenCalled();
   });
 });
