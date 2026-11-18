@@ -74,3 +74,4 @@ tekniskt mest komplext.
 - [05 – Säkerhet och GDPR](05-sakerhet-och-gdpr.md): säkerhet, dataskydd, icke-funktionella krav
 - [06 – Öppna frågor](06-oppna-fragor.md): frågor till kommunen och föreningen
 - [07 – Teststrategi](07-teststrategi.md): testnivåer, E2E med Playwright, Claude-agenter och CI
+- [08 – Frontend](08-frontend.md): admin-appen (React) och hemsidan (Astro), navigering, utseende
