@@ -15,7 +15,18 @@ async function kontrolleraTillganglighet(page: Page) {
 test.describe("första inloggningen", () => {
   // Flödet gör att Dokumenterare-kontot byter innehavare och lösenord. Efteråt sätts allt tillbaka, så att testet kan
   // köras igen mot samma backend, och dokumenterarens sparade inloggning, som innehavarbytet gjorde ogiltig, skapas om.
+  let losenordsbyteStartat = false;
+
+  test.beforeEach(() => {
+    losenordsbyteStartat = false;
+  });
+
   test.afterEach(async ({ playwright }) => {
+    // Har testet inte kommit så långt är lösenordet orört. Då finns inget att sätta tillbaka, och ett inloggningsförsök
+    // med det nya lösenordet skulle bara räknas som ett misslyckat försök.
+    if (!losenordsbyteStartat) {
+      return;
+    }
     const oinloggad = await ApiSession.oinloggad(playwright);
     const svar = await oinloggad.post("/api/v1/auth/login", {
       username: DOKUMENTERARE.anvandarnamn,
@@ -58,6 +69,7 @@ test.describe("första inloggningen", () => {
     await page.getByLabel("Nuvarande lösenord", { exact: true }).fill(DOKUMENTERARE.losenord);
     await page.getByLabel("Nytt lösenord", { exact: true }).fill(NYTT_LOSENORD);
     await page.getByLabel("Upprepa nytt lösenord", { exact: true }).fill(NYTT_LOSENORD);
+    losenordsbyteStartat = true;
     await page.getByRole("button", { name: "Byt lösenord" }).click();
 
     // Nu kommer man in.

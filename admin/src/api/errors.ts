@@ -36,8 +36,26 @@ export function formatWait(seconds: number): string {
   return `${String(Math.ceil(minutes / 60))} timmar`;
 }
 
+/** En kropp som liknar ett felsvar. Svar från en proxy eller felsida kan ha vilken form som helst. */
 function isProblem(body: unknown): body is ProblemDetail {
-  return typeof body === "object" && body !== null;
+  return typeof body === "object" && body !== null && !Array.isArray(body);
+}
+
+/** Fälten i `errors`, och bara de poster som har en `field` och ett `message` som är text. */
+function fieldErrors(problem: ProblemDetail | undefined): { field: string; message: string }[] {
+  const errors: unknown = problem?.errors;
+  if (!Array.isArray(errors)) {
+    return [];
+  }
+  return (errors as unknown[]).filter(
+    (error): error is { field: string; message: string } =>
+      typeof error === "object" &&
+      error !== null &&
+      "field" in error &&
+      typeof error.field === "string" &&
+      "message" in error &&
+      typeof error.message === "string",
+  );
 }
 
 /**
@@ -48,7 +66,7 @@ function isProblem(body: unknown): body is ProblemDetail {
 export function describeFailure(response: Response, body: unknown): Failure {
   const problem = isProblem(body) ? body : undefined;
   const fields: Record<string, string> = {};
-  for (const error of problem?.errors ?? []) {
+  for (const error of fieldErrors(problem)) {
     fields[error.field] ??= error.message;
   }
 

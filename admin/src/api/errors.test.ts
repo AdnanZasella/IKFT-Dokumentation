@@ -64,6 +64,17 @@ describe("describeFailure", () => {
     });
   });
 
+  it.each([
+    ["en text", { status: 502, errors: "bad gateway" }],
+    ["ett objekt", { status: 400, errors: {} }],
+    ["poster utan fält", { status: 400, errors: [null, 7, { message: "Saknar fält." }, { field: 3, message: "Fel typ." }] }],
+    ["en lista i stället för ett objekt", [{ field: "a", message: "b" }]],
+  ])("kastar inte när errors är %s, utan ger inga fältfel", (_namn, body) => {
+    const failure = describeFailure(response(400), body);
+
+    expect(failure.fields).toEqual({});
+  });
+
   it("anger hur länge en spärr varar", () => {
     const failure = describeFailure(response(429, { "Retry-After": "900" }), { status: 429, detail: "Spärrad." });
 

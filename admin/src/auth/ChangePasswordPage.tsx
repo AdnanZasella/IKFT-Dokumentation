@@ -79,7 +79,11 @@ export function ChangePasswordPage() {
           type="password"
           autoComplete="new-password"
           error={errors.newPassword?.message}
-          {...register("newPassword", { required: "Fyll i ett nytt lösenord." })}
+          {...register("newPassword", {
+            required: "Fyll i ett nytt lösenord.",
+            // Upprepningen kontrolleras om när det här fältet ändras, så att ett gammalt "inte lika" inte blir kvar.
+            deps: ["confirmPassword"],
+          })}
         />
         <TextField
           label="Upprepa nytt lösenord"

@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
@@ -91,6 +91,22 @@ describe("det tvingade lösenordsbytet", () => {
 
     expect(await screen.findByText("Lösenorden är inte lika.")).toBeInTheDocument();
     expect(screen.getByLabelText("Upprepa nytt lösenord")).toBeInvalid();
+  });
+
+  it("tar bort 'inte lika' när det nya lösenordet rättas så att de stämmer", async () => {
+    masteByta();
+    renderApp("/change-password");
+    await fyllIFalten("det-gamla-losenordet", "ett-helt-nytt-losenord", "ett-helt-nytt-losenordX");
+    await bytLosenord();
+    expect(await screen.findByText("Lösenorden är inte lika.")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Nytt lösenord"), "X");
+
+    // Valideringen körs om asynkront.
+    await waitFor(() => {
+      expect(screen.queryByText("Lösenorden är inte lika.")).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText("Upprepa nytt lösenord")).toBeValid();
   });
 
   it("visar backendens fel på rätt fält när det nya lösenordet inte duger", async () => {
