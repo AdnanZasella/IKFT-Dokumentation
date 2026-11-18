@@ -115,12 +115,20 @@ endpoint stoppar bygget i stället för att ge en tyst bugg:
 Beskrivningen är avstängd i drift (`OpenApiAvstangdIntegrationTest`). Alla svarsfält är obligatoriska utom de som är
 markerade `@Schema(nullable = true)`.
 
+Varje endpoint har också ett `default`-svar av typen `application/problem+json` med schemat `ProblemDetail`
+(RFC 9457, med `errors` för ogiltiga fält och `mustChangePassword` för det tvingade lösenordsbytet). Det läggs till av
+`OpenApiConfig`, så felkroppen är typad i klienten. `OpenApiKontraktIntegrationTest` kontrollerar att varje endpoint har
+det, och att ett verkligt 400-svar bara har egenskaper som schemat beskriver. `ProblemDetailSchemaTest` gör samma sak för
+säkerhetskedjans 401, 403 och 403 med `mustChangePassword`.
+
 ## CI
 
-- **Nu:** backend `verify` på varje PR och på `main` ([backend-ci.yml](../.github/workflows/backend-ci.yml)).
+- **Backend:** `verify` på varje PR och på `main` ([backend-ci.yml](../.github/workflows/backend-ci.yml)).
   Test- och täckningsrapporter sparas som artefakt.
-- **När frontenden finns:** ett jobb för lint, typkontroll och Vitest, och ett E2E-jobb efter backend-jobbet.
-  Båda ska vara obligatoriska kontroller för att få merga till `main`.
+- **Admin-appen:** lint, typkontroll, Vitest och bygge ([admin-ci.yml](../.github/workflows/admin-ci.yml)). Jobbet
+  behöver ingen backend, eftersom anropen mockas med MSW, så det körs vid sidan av backend-jobbet och inte efter det.
+- **När E2E finns:** ett E2E-jobb efter backend-jobbet. Alla jobb ska vara obligatoriska kontroller för att få merga
+  till `main`.
 - Obligatoriska kontroller och skydd av `main` ställs in i GitHub (Settings → Branches), inte i koden.
 
 ## Vad vi medvetet inte gör

@@ -1,0 +1,49 @@
+name: Admin CI
+
+# Lint, typkontroll, Vitest (nivå 3) och bygge av admin-appen. Jobbet behöver ingen backend: anropen mockas med MSW.
+# Att typerna är genererade ur kontraktet kontrolleras av api-kontrakt.yml.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "admin/**"
+      - ".github/workflows/admin-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typkontroll
+        run: npm run typecheck
+
+      - name: Vitest
+        run: npm test
+
+      - name: Bygg
+        run: npm run build

@@ -52,6 +52,9 @@ utseendet innan det publika API:et (Fas 4) finns.
 
 - **Lokalt:** Vite-servern proxar `/api` till backenden på `localhost:8080`, så webbläsaren ser en enda ursprung och
   cookies (`Secure`, `SameSite=Strict`) fungerar. Chromium och Firefox tillåter `Secure`-cookies på `localhost`.
+  Kontrollerat i Chromium via proxyn (#47): `__Host-XSRF-TOKEN` sätts redan av det första `GET /auth/me` (även när
+  svaret är 401), inloggningscookien och förnyelsecookien sätts och skickas, och CSRF-token byts vid inloggning och
+  förnyelse. Därför läser klienten token vid varje anrop.
 - **Drift:** `admin.<domän>.se` serverar de byggda filerna och `/api` från samma ursprung bakom en omvänd proxy. Ingen CORS.
 
 ### Layout
