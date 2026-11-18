@@ -15,8 +15,9 @@ granskar tester och [docs/08-frontend.md](docs/08-frontend.md) innan du bygger a
   Playwright MCP.
 - `design/` – förebild och material för hemsidans utseende (skärmbilder, logotyp, texter). Mappen är
   publik, så inget där får vara privat. Behövs först i fas 4.
-- `admin/` – admin-appen (React, Vite). Än så länge finns bara API-kontraktet (`src/api/openapi.json` och
-  `schema.d.ts`) och ett minimalt `package.json`. Appen byggs i #47–#52.
+- `admin/` – admin-appen (React, Vite, strikt TypeScript). Grunden är klar (#47): typad API-klient (`src/api/`),
+  session och routing (`src/app/`), Vitest med MSW (`src/test/`) och API-kontraktet (`src/api/openapi.json` och
+  `schema.d.ts`). Sidorna är platshållare och byggs i #48–#52.
 - `web/` (hemsidan, Astro) och `e2e/` finns inte än (#53 och #48).
 
 ## Läget
@@ -35,7 +36,10 @@ bara födelsedatum, hemkommun och status med värden, övriga fält bara som än
 
 Frontend: planen finns i [docs/08-frontend.md](docs/08-frontend.md) (admin-appen i React, hemsidan i Astro,
 admin först och hemsidan som prototyp med exempeldata). Issues #46–#53, ordning i #31. #46 (OpenAPI-kontraktet) är
-klart. Nästa är #47 (admin-appens grund), som också ska ge typade felsvar (`ProblemDetail`, se kommentaren på #47).
+klart, liksom #47 (admin-appens grund, med typade felsvar: `ProblemDetail` är `default`-svar i kontraktet). Nästa är
+#48 (inloggning, tvingat lösenordsbyte och första E2E-testet). #48 ska invalidera `ME_KEY` efter lyckad inloggning
+(kontot är cachat med `staleTime: Infinity`) och skicka redan inloggade bort från `/login`. Hemsidans prototyp (#53)
+tas efter admin-spåret.
 Backendens API för sammankomster, möten och det publika API:et finns inte än (Fas 2–4).
 
 Backend är uppdelad i paket per funktion under `se.ikft`. Varje paket har en `package-info.java`
